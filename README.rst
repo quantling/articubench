@@ -6,9 +6,11 @@ A benchmark to evaluate articulatory speech synthesis systems. This benchmark us
 
 Types of data
 =============
-* acoustics (wave form, log-melspectrogramms)
-* semantics (fast text 300 dim semantic vector for single words)
-* mid sagital tongue movement from ultra sound imaging
+* wave form (acoustics)
+* log-melspectrogramms (acoustics)
+* formant transitions (acoustics)
+* fasttext 300 dim semantic vector for single words (semantics)
+* mid sagital tongue movement contour from ultra sound imaging
 * electromagnetic articulatory (EMA) sensors on tongue tip and tongue body
 
 Languages
@@ -40,6 +42,24 @@ Data used here comes from the following speech corpora:
 * Mozilla Common Voice
 * baba-babi-babu speech rate (ultra sound; acoustics)
 
+
+Prerequisits
+============
+
+For running the benchmark:
+
+* python >=3.8
+* praat
+
+For creating the benchmark:
+
+* mfa (Montreal forced aligner)
+* VTL 2.3 (included in this repository)
+
+
+License
+=======
+* VTL is GPL 2.0+ license
 
 Links
 =====

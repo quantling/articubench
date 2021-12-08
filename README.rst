@@ -1,7 +1,8 @@
 articubench
 ===========
 
-A benchmark to evaluate articulatory speech synthesis systems. This benchmark uses the VocalTractLab [1]_ as its articulatory speech synthesis simulator.
+A benchmark to evaluate articulatory speech synthesis systems. This benchmark
+uses the VocalTractLab [1] as its articulatory speech synthesis simulator.
 
 .. warning::
 
@@ -26,12 +27,14 @@ Languages
 
 Variants
 --------
-As running the benchmark is computational itensive there are different versions of this benchmark, which require different amounts of articulatory synthesis.
+As running the benchmark is computational itensive there are different versions
+of this benchmark, which require different amounts of articulatory synthesis.
 
 
 Tiny
 ^^^^
-The smallest possible benchmark to check that everything works, but with no statistical power.
+The smallest possible benchmark to check that everything works, but with no
+statistical power.
 
 
 Small
@@ -75,5 +78,5 @@ License
 Links
 -----
 
-.. _[1]: https://www.vocaltractlab.de/
+* [1] https://www.vocaltractlab.de/
 

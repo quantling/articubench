@@ -65,7 +65,7 @@ For creating the benchmark:
 
 License
 =======
-* VTL is GPL 2.0+ license
+* VTL is GPLv3.0+ license
 
 Links
 =====

@@ -4,6 +4,12 @@ articubench
 
 A benchmark to evaluate articulatory speech synthesis systems. This benchmark uses the VocalTractLab [1]_ as its articulatory speech synthesis simulator.
 
+.. warning::
+
+   This package is not released yet and will be released in March 2022
+   alongside the ESSV 2022 conference.
+
+
 Types of data
 =============
 * wave form (acoustics)
@@ -63,4 +69,6 @@ License
 
 Links
 =====
-* [1] https://www.vocaltractlab.de/
+
+.. _[1]: https://www.vocaltractlab.de/
+

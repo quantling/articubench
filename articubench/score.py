@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE
 tqdm.pandas()
 """
 MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.044404  ,
@@ -74,11 +75,31 @@ def score(model, *, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
 
     # synthesise cps
     if tasks == 'all' or 'copy-synthesis' in tasks:
-        data['sig_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: util.speak(cps)[0])
+        data['sig_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
     if tasks == 'all' or 'semantic-acoustic' in tasks:
-        data['sig_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: util.speak(cps)[0])
+        data['sig_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: speak(cps)[0])
     if tasks == 'all' or 'semantic-only' in tasks:
-        data['sig_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: util.speak(cps)[0])
+        data['sig_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: speak(cps)[0])
+
+    # calculate log-mel spectrograms
+    if subscores == 'all' or 'acoustic' in subscores or 'semantic' in subscores:
+        if tasks == 'all' or 'copy-synthesis' in tasks:
+            data['log_mel_copy-synthesis'] = data['sig_copy-synthesis'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
+            data['loudness_copy-synthesis'] = data['log_mel_copy-synthesis'].apply(lambda x: np.mean(x, axis=1))
+        if tasks == 'all' or 'semantic-acoustic' in tasks:
+            data['log_mel_semantic-acoustic'] = data['sig_semantic-acoustic'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
+            data['loudness_semantic-acoustic'] = data['log_mel_semantic-acoustic'].apply(lambda x: np.mean(x, axis=1))
+        if tasks == 'all' or 'semantic-only' in tasks:
+            data['log_mel_semantic-only'] = data['sig_semantic-only'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
+            data['loudness_semantic-only'] = data['log_mel_semantic-only'].apply(lambda x: np.mean(x, axis=1))
+
+        data['rec_log_mel'] = data.progress_apply(lambda row: normalize_mel_librosa(librosa_melspec(row['rec_sig'],row['rec_sr'])))
+        data['rec_loudness'] = data['rec_log_mel'].progress_apply(lambda x: np.mean(x, axis=1))
+
+    # predict vector embeddings
+    if subscores == 'all' or 'semantic' in subscores:
+
+
 
     # ????
     # refactor model from function to class with: model.copy_synthesis,
@@ -116,6 +137,9 @@ def score(model, *, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     return scores.score_total, scores
 
 
+########################################
+########## Score Articulatory ##########
+########################################
 def score_articulatory(data, *, task):
     s_tongue_height = score_tongue_height(data,task=task)
     s_ema = score_ema(data, task=task)
@@ -124,18 +148,50 @@ def score_articulatory(data, *, task):
     s_articulatory = s_tongue_height + s_ema + s_vel_jerk
     return s_articulatory, [s_tongue_height, s_ema, s_vel_jerk]
 
-
-
-
-
 def score_vel_jerk(data,task):
-    temp_dat = data[f'cps_{task}'].apply(util.get_vel_acc_jerk)
+    temp_dat = data[f'cps_{task}'].apply(get_vel_acc_jerk)
     df_temp = pd.DataFrame(temp_dat, columns=['vel', 'acc', 'jerk'])
     max_vels = df_temp.vel.apply(np.amax)
     max_jerks = df_temp.jerk.apply(np.amax)
 
-    #data[f'max_vel_{task}'] = max_vels
-    #data[f'max_jerk_{task}'] = max_jerks
+    data[f'max_vel_{task}'] = max_vels
+    data[f'max_jerk_{task}'] = max_jerks
+
+    del df_temp
+    del temp_dat
 
     s_vel_jerk = 100 * (2 - np.mean(max_vels) / MAX_VEL_GECO - np.mean(max_jerks) / MAX_JERK_GECO)
     return s_vel_jerk
+
+########################################
+############ Score acoustic ############
+########################################
+def score_acoustic(data, *, task):
+    s_loudness = score_loudness(data,task=task)
+    s_sepctrogram = score_spectrogram(data, task=task)
+
+    s_acoustic = s_loudness + s_sepctrogram
+    return s_acoustic, [s_loudness, s_sepctrogram]
+
+def score_loudness(data,task):
+    s_loudness = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'loudness_{task}'],row['rec_loudness'])))/BASELINE_LOUDNESS)
+    return s_loudness
+
+def score_spectrogram(data, task):
+    s_spectrogram = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'log_mel_{task}'], row['rec_log_mel']))) / BASELINE_SPECTROGRAM)
+    return s_spectrogram
+
+
+########################################
+############ Score Semantic ############
+########################################
+
+def score_semantic(data, *, task):
+    s_sem_dist = score_sem_dist(data,task=task)
+    s_sem_rank = score_sem_rank(data, task=task)
+
+    s_semantic = s_sem_dist + s_sem_rank + s_vel_jerk
+    return s_semantic, [s_sem_dist, s_sem_rank]
+
+
+

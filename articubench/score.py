@@ -7,8 +7,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE
+from util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor
 tqdm.pandas()
+from sklearn.metrics.pairwise import euclidean_distances
 """
 MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.044404  ,
        0.016517  , 0.08116   , 0.04426   , 0.03542   , 0.04072   ,
@@ -30,7 +31,8 @@ MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.7831
 """
 MAX_JERK_GECO = 0.034748
 
-
+LABEL_VECTORS = pd.read_pickle("/data/label_vectors_vectors_checked.pkl")
+LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
 
 def score(model, *, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     'semantic-only'), subscores='all'):
@@ -85,20 +87,39 @@ def score(model, *, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     if subscores == 'all' or 'acoustic' in subscores or 'semantic' in subscores:
         if tasks == 'all' or 'copy-synthesis' in tasks:
             data['log_mel_copy-synthesis'] = data['sig_copy-synthesis'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
-            data['loudness_copy-synthesis'] = data['log_mel_copy-synthesis'].apply(lambda x: np.mean(x, axis=1))
+            data['loudness_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda x: np.mean(x, axis=1))
         if tasks == 'all' or 'semantic-acoustic' in tasks:
             data['log_mel_semantic-acoustic'] = data['sig_semantic-acoustic'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
-            data['loudness_semantic-acoustic'] = data['log_mel_semantic-acoustic'].apply(lambda x: np.mean(x, axis=1))
+            data['loudness_semantic-acoustic'] = data['log_mel_semantic-acoustic'].progress_apply(lambda x: np.mean(x, axis=1))
         if tasks == 'all' or 'semantic-only' in tasks:
             data['log_mel_semantic-only'] = data['sig_semantic-only'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
-            data['loudness_semantic-only'] = data['log_mel_semantic-only'].apply(lambda x: np.mean(x, axis=1))
+            data['loudness_semantic-only'] = data['log_mel_semantic-only'].progress_apply(lambda x: np.mean(x, axis=1))
 
         data['rec_log_mel'] = data.progress_apply(lambda row: normalize_mel_librosa(librosa_melspec(row['rec_sig'],row['rec_sr'])))
         data['rec_loudness'] = data['rec_log_mel'].progress_apply(lambda x: np.mean(x, axis=1))
 
     # predict vector embeddings
     if subscores == 'all' or 'semantic' in subscores:
+        embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
+        embedder.load_state_dict(torch.load(
+            os.path.join("../pretrained_models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
+            map_location=device))
+        #self.embedder = self.embedder.to(self.device)
+        embedder.eval()
 
+        with torch.no_grad:
+            if tasks == 'all' or 'copy-synthesis' in tasks:
+                data['sem_vec_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0])))[-1, :].detach().cpu().numpy().copy())
+                data['sem_rank_copy-synthesis'] = data.progress_apply(lambda row: sem_rank(row['sem__vec_copy-synthesis'], row['label']))
+
+            if tasks == 'all' or 'semantic-acoustic' in tasks:
+                data['sem_vec_semantic-acoustic'] = data['log_mel_semantic-acoustic'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0])))[-1, :].detach().cpu().numpy().copy())
+                data['sem_rank_semantic-acoustic'] = data.progress_apply(lambda row: sem_rank(row['sem_vec_semantic-acoustic'], row['label']))
+
+
+            if tasks == 'all' or 'semantic-only' in tasks:
+                data['sem_vec_semantic-only'] = data['log_mel_semantic-only'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0])))[-1, :].detach().cpu().numpy().copy())
+                data['sem_rank_semantic-only'] = data.progress_apply(lambda row: sem_rank(row['sem_vec_semantic-only'], row['label']))
 
 
     # ????
@@ -190,8 +211,21 @@ def score_semantic(data, *, task):
     s_sem_dist = score_sem_dist(data,task=task)
     s_sem_rank = score_sem_rank(data, task=task)
 
-    s_semantic = s_sem_dist + s_sem_rank + s_vel_jerk
+    s_semantic = s_sem_dist + s_sem_rank
     return s_semantic, [s_sem_dist, s_sem_rank]
 
+def score_sem_dist(data,task):
+    s_sem_dist = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'sem_vec_{task}'], row['vector']))) / BASELINE_SEMDIST)
+    return s_sem_dist
 
+def score_sem_rank(data,task):
+    s_sem_rank = 100*(1-np.mean(data[f'sem_rank_{task}']-1)/4311)
+    return s_sem_rank
 
+def sem_rank(pred_semvec, label):
+    dist = euclidean_distances(pred_semvec, LABEL_VECTORS_NP)[0]
+    true_index = int(LABEL_VECTORS[LABEL_VECTORS.label == label].index[0])
+    #dist_target = dist[true_index]
+    dist_argsort = np.argsort(dist)
+    rank_target = np.where(dist_argsort == true_index)[0][0] + 1
+    return rank_target

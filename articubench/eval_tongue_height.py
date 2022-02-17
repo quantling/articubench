@@ -1,5 +1,8 @@
 from xml.dom import minidom
-
+import numpy as np
+from util import export_svgs
+import os
+import shutil
 # calculate tongue height
 # tongue is at line 11
 # teath are mostly on line 17
@@ -111,3 +114,13 @@ def rigid_transform_3D(A, B):
 
     return R, t
 
+def tongue_heights_from_cps(cps):
+    export_svgs(cps, path='svgs/', hop_length=5)
+    tongue_pos = []
+
+    for svg in np.sort(os.listdir("svgs")):
+        tongue_pos += [extract_highest_tongue_pos(svg)]
+
+    shutil.rmtree("svgs")
+
+    return np.asarray(tongue_pos)

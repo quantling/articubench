@@ -11,9 +11,12 @@ import os
 
 from util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor
 from eval_tongue_height import tongue_heights_from_cps
+from embedding_models import MelEmbeddingModel
+from  control_models import synth_baseline_schwa
 
 tqdm.pandas()
 from sklearn.metrics.pairwise import euclidean_distances
+
 
 
 
@@ -75,6 +78,12 @@ def score(model, *, data=None, scores=None, size='tiny', tasks=('copy-synthesis'
         else:
             raise ValueError(f"size has to be one of 'tiny', 'small', 'normal' and not {size}")
 
+    # generate Baseline:
+    if ('cps_baseline' not in data.columns) or (data['cps_baseline'].isnull().any()) or (not len(data.index)):
+        data['cps_baseline'] = data.len_cp.progress_apply(synth_baseline_schwa)
+    if ('sig_baseline' not in data.columns) or (data['sig_baseline'].isnull().any()) or (not len(data.index)):
+        data['sig_baseline'] = data['cps_baseline'].progress_apply(lambda cps: speak(cps)[0])
+
     # generate cps
     if tasks == 'all' or 'copy-synthesis' in tasks:
         if ('cps_copy-synthesis' not in data.columns) or (data['cps_copy-synthesis'].isnull().any()) or (not len(data.index)):
@@ -103,6 +112,11 @@ def score(model, *, data=None, scores=None, size='tiny', tasks=('copy-synthesis'
 
     # calculate tongue heights
     if subscores == 'all' or 'articulatory' in subscores:
+        if ('tongue_heights_baseline' not in data.columns) or (data['tongue_heights_baseline'].isnull().any()) or (not len(data.index)):
+            data['tongue_heights_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
+        global BASELINE_TONGUE_HEIGHT
+        BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_heights_baseline'], row['tongue_heights_ultra'])))
+
         if tasks == 'all' or 'copy-synthesis' in tasks:
             if ('tongue_heights_copy-synthesis' not in data.columns) or (data['tongue_heights_copy-synthesis'].isnull().any()) or (not len(data.index)):
                 data['tongue_heights_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
@@ -115,8 +129,18 @@ def score(model, *, data=None, scores=None, size='tiny', tasks=('copy-synthesis'
             if ('tongue_heights_semantic-only' not in data.columns) or (data['tongue_heights_semantic-only'].isnull().any()) or (not len(data.index)):
                 data['tongue_heights_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
 
+
     # calculate log-mel spectrograms
     if subscores == 'all' or 'acoustic' in subscores or 'semantic' in subscores:
+        if ('log_mel_baseline' not in data.columns) or (data['log_mel_baseline'].isnull().any()) or (not len(data.index)):
+                data['log_mel_baseline'] = data['sig_baseline'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig, 44100)))
+                data['loudness_baseline'] = data['log_mel_baseline'].progress_apply(lambda x: np.mean(x, axis=1))
+
+        global BASELINE_SPECTROGRAM
+        global BASELINE_LOUDNESS
+        BASELINE_SPECTROGRAM = np.mean(data.progress_apply(lambda row: RMSE(row[f'log_mel_{task}'], row['target_log_mel'])))
+        BASELINE_LOUDNESS = np.mean(data.progress_apply(lambda row: RMSE(row[f'loudness_{task}'], row['target_loudness'])))
+
         if tasks == 'all' or 'copy-synthesis' in tasks:
             if ('log_mel_copy-synthesis' not in data.columns) or (data['log_mel_copy-synthesis'].isnull().any()) or (not len(data.index)):
                 data['log_mel_copy-synthesis'] = data['sig_copy-synthesis'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
@@ -146,6 +170,12 @@ def score(model, *, data=None, scores=None, size='tiny', tasks=('copy-synthesis'
         embedder.eval()
 
         with torch.no_grad:
+            if ('semantic_vector_baseline' not in data.columns) or (data['semantic_vector_baseline'].isnull().any()) or (not len(data.index)):
+                data['semantic_vector_baseline'] = data['log_mel_baseline'].progress_apply(lambda mel: embedder(mel_to_tensor(mel), (torch.tensor(mel.shape[0])))[-1,:].detach().cpu().numpy().copy())
+                data['semantic_rank_baseline'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_baseline'], row['label']))
+            global BASELINE_SEMDIST
+            BASELINE_SEMDIST = np.mean(data.progress_apply(lambda row: RMSE(row['semantic_vector_baseline'], row['target_semantic_vector'])))
+
             if tasks == 'all' or 'copy-synthesis' in tasks:
                 if ('semantic_vector_copy-synthesis' not in data.columns) or (data['semantic_vector_copy-synthesis'].isnull().any()) or (not len(data.index)):
                     data['semantic_vector_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0])))[-1, :].detach().cpu().numpy().copy())

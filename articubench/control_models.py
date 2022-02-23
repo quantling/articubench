@@ -32,7 +32,9 @@ import sys
 import numpy as np
 import torch
 
-from paule import paule, util
+#from paule import paule, util
+import paule
+import util
 
 VTL_NEUTRAL_TRACT = np.array([1.0, -4.75, 0.0, -2.0, -0.07, 0.95, 0.0, -0.1, -0.4, -1.46, 3.5, -1.0, 2.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0])
 VTL_NEUTRAL_TRACT.shape = (1, 19)

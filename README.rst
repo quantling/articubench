@@ -9,6 +9,24 @@ uses the VocalTractLab [1] as its articulatory speech synthesis simulator.
    This package is not released yet and will be released in March 2022
    alongside the ESSV 2022 conference.
 
+Installation
+------------
+
+::
+
+    pip install articubench
+
+
+Overview
+--------
+
+.. image:: https://raw.githubusercontent.com/quantling/articubench/main/doc/figure/articubench_overview.png
+  :width: 800
+  :alt: Box and arrow overview of the data flow and tasks of the articubench benchmark.
+
+The benchmarks defines three tasks: semantic only, semantic-acoustic and
+acoustic only.
+
 
 Types of data
 -------------
@@ -51,10 +69,10 @@ Corpora
 -------
 Data used here comes from the following speech corpora:
 
-* GECO (only phonetic transscription; duration and phone)
 * KEC (EMA data, acoustics)
-* Mozilla Common Voice
 * baba-babi-babu speech rate (ultra sound; acoustics)
+* Mozilla Common Voice
+* GECO (only phonetic transscription; duration and phone)
 
 
 Prerequisits
@@ -64,11 +82,11 @@ For running the benchmark:
 
 * python >=3.8
 * praat
+* VTL API 2.5.1quantling (included in this repository)
 
-For creating the benchmark:
+Additionally, for creating the benchmark:
 
 * mfa (Montreal forced aligner)
-* VTL 2.3 (included in this repository)
 
 
 License

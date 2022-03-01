@@ -3,3 +3,5 @@ dist/
 doc/build/
 build/
 __pycache__/
+doc/figure/articubench_overview.aux
+doc/figure/articubench_overview.log

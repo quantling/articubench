@@ -9,6 +9,7 @@ import librosa
 import torch.nn
 import pandas as pd
 import torch
+import math
 
 
 # load vocaltractlab binary
@@ -522,6 +523,8 @@ def mel_to_tensor(mel):
     torch_mel = torch.from_numpy(torch_mel).detach().clone()
     return torch_mel
 
+def round_up_to_even(f):
+    return math.ceil(f / 2.) * 2
 
 
 

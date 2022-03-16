@@ -2,22 +2,25 @@
 Here the benchmark subscores and the total score are calculated.
 
 """
+import os
+from collections import abc
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import torch
-import os
-
-from util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor
-from eval_tongue_height import tongue_heights_from_cps
-from embedding_models import MelEmbeddingModel
-from control_models import synth_baseline_schwa
-
-tqdm.pandas()
 from sklearn.metrics.pairwise import euclidean_distances
 
+from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor
+from .eval_tongue_height import tongue_heights_from_cps
+from .embedding_models import MelEmbeddingModel
+from .control_models import synth_baseline_schwa
+from .import control_models
+from . import benchmark_data
 
+tqdm.pandas()
+
+DIR = os.path.dirname(__file__)
 
 
 """
@@ -41,11 +44,12 @@ MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.7831
 """
 MAX_JERK_GECO = 0.034748
 
-LABEL_VECTORS = pd.read_pickle("data/label_vectors.pkl")
+#LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/label_vectors.pkl"))
+LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
 
 def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
-    'semantic-only'), subscores='all', return_individual_subscores=False, device = torch.device('cpu')):
+    'semantic-only'), subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
     """
     Main function to calculate the score for the benchmark.
 
@@ -67,8 +71,17 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
     """
 
-    # load data
+    if (not isinstance(subscores, abc.Sequence) and not isinstance(tasks, str)) or (isinstance(tasks, str) and tasks != 'all'):
+        raise ValueError('tasks has to be either list of tasks or "all"')
+    if (not isinstance(subscores, abc.Sequence) and not isinstance(subscores, str)) or (isinstance(subscores, str) and subscores != 'all'):
+        raise ValueError('subscores has to be either list of subscores or "all"')
 
+    if tasks == 'all':
+        tasks = ('copy-synthesis', 'semantic-acoustic', 'semantic-only')
+    if subscores == 'all':
+        subscores = ('acoustic', 'articulatory', 'semantic')
+
+    # load data
     if preloaded_data is None:
         if size == 'tiny':
             data = benchmark_data.load_tiny()
@@ -90,28 +103,28 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         data['sig_baseline'] = data['cps_baseline'].progress_apply(lambda cps: speak(cps)[0])
 
     # generate cps
-    if tasks == 'all' or 'copy-synthesis' in tasks:
+    if 'copy-synthesis' in tasks:
         if ('cps_copy-synthesis' not in data.columns) or (data['cps_copy-synthesis'].isnull().any()) or (not len(data.index)):
-                data['cps_copy-synthesis'] = data.progress_apply(lambda row: model(row['len_cp'], target_audio=row['target_sig'], sampling_rate=row['target_sr']),axis=1)
+                data['cps_copy-synthesis'] = data.progress_apply(lambda row: model(row['len_cp'], target_audio=row['target_sig'], sampling_rate=row['target_sr']), axis=1)
 
-    if tasks == 'all' or 'semantic-acoustic' in tasks:
+    if 'semantic-acoustic' in tasks:
         if ('cps_semantic-acoustic' not in data.columns) or (data['cps_semantic-acoustic'].isnull().any()) or (not len(data.index)):
-            data['cps_semantic-acoustic'] = data.progress_apply(lambda row: model(row['len_cp'], target_audio=row['target_sig'], sampling_rate=row['target_sr'], target_semantic_vector=row['target_semantic_vector']),axis=1)
+            data['cps_semantic-acoustic'] = data.progress_apply(lambda row: model(row['len_cp'], target_audio=row['target_sig'], sampling_rate=row['target_sr'], target_semantic_vector=row['target_semantic_vector']), axis=1)
 
-    if tasks == 'all' or 'semantic-only' in tasks:
+    if 'semantic-only' in tasks:
         if ('cps_semantic-only' not in data.columns) or (data['cps_semantic-only'].isnull().any()) or (not len(data.index)):
             data['cps_semantic-only'] = data.progress_apply(lambda row: model(row['len_cp'], target_semantic_vector=row['target_semantic_vector']),axis=1)
 
     # synthesise cps
-    if tasks == 'all' or 'copy-synthesis' in tasks:
+    if 'copy-synthesis' in tasks:
         if ('sig_copy-synthesis' not in data.columns) or (data['sig_copy-synthesis'].isnull().any()) or (not len(data.index)):
             data['sig_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
 
-    if tasks == 'all' or 'semantic-acoustic' in tasks:
+    if 'semantic-acoustic' in tasks:
         if ('sig_semantic-acoustic' not in data.columns) or (data['sig_semantic-acoustic'].isnull().any()) or (not len(data.index)):
             data['sig_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: speak(cps)[0])
 
-    if tasks == 'all' or 'semantic-only' in tasks:
+    if 'semantic-only' in tasks:
         if ('sig_semantic-only' not in data.columns) or (data['sig_semantic-only'].isnull().any()) or (not len(data.index)):
             data['sig_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: speak(cps)[0])
 
@@ -122,15 +135,15 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         global BASELINE_TONGUE_HEIGHT
         BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_heights_baseline'], row['tongue_heights_ultra']),axis=1))
 
-        if tasks == 'all' or 'copy-synthesis' in tasks:
+        if 'copy-synthesis' in tasks:
             if ('tongue_heights_copy-synthesis' not in data.columns) or (data['tongue_heights_copy-synthesis'].isnull().any()) or (not len(data.index)):
                 data['tongue_heights_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
 
-        if tasks == 'all' or 'semantic-acoustic' in tasks:
+        if 'semantic-acoustic' in tasks:
             if ('tongue_heights_semantic-acoustic' not in data.columns) or (data['tongue_heights_semantic-acoustic'].isnull().any()) or (not len(data.index)):
                 data['tongue_heights_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
 
-        if tasks == 'all' or 'semantic-only' in tasks:
+        if 'semantic-only' in tasks:
             if ('tongue_heights_semantic-only' not in data.columns) or (data['tongue_heights_semantic-only'].isnull().any()) or (not len(data.index)):
                 data['tongue_heights_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
 
@@ -142,19 +155,19 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         if ('loudness_baseline' not in data.columns) or (data['loudness_baseline'].isnull().any()) or (not len(data.index)):
                 data['loudness_baseline'] = data['log_mel_baseline'].progress_apply(lambda x: np.mean(x, axis=1))
 
-        if tasks == 'all' or 'copy-synthesis' in tasks:
+        if 'copy-synthesis' in tasks:
             if ('log_mel_copy-synthesis' not in data.columns) or (data['log_mel_copy-synthesis'].isnull().any()) or (not len(data.index)):
                 data['log_mel_copy-synthesis'] = data['sig_copy-synthesis'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
             if ('loudness_copy-synthesis' not in data.columns) or (data['loudness_copy-synthesis'].isnull().any()) or (not len(data.index)):
                 data['loudness_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda x: np.mean(x, axis=1))
 
-        if tasks == 'all' or 'semantic-acoustic' in tasks:
+        if 'semantic-acoustic' in tasks:
             if ('log_mel_semantic-acoustic' not in data.columns) or (data['log_mel_semantic-acoustic'].isnull().any()) or (not len(data.index)):
                 data['log_mel_semantic-acoustic'] = data['sig_semantic-acoustic'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
             if ('loudness_semantic-acoustic' not in data.columns) or (data['loudness_semantic-acoustic'].isnull().any()) or (not len(data.index)):
                 data['loudness_semantic-acoustic'] = data['log_mel_semantic-acoustic'].progress_apply(lambda x: np.mean(x, axis=1))
 
-        if tasks == 'all' or 'semantic-only' in tasks:
+        if 'semantic-only' in tasks:
             if ('log_mel_semantic-only' not in data.columns) or (data['log_mel_semantic-only'].isnull().any()) or (not len(data.index)):
                 data['log_mel_semantic-only'] = data['sig_semantic-only'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
             if ('loudness_semantic-only' not in data.columns) or (data['loudness_semantic-only'].isnull().any()) or (not len(data.index)):
@@ -174,7 +187,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     if subscores == 'all' or 'semantic' in subscores:
         embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
         embedder.load_state_dict(torch.load(
-            os.path.join("../pretrained_models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
+            os.path.join(DIR, "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
             map_location=device))
         embedder = embedder.to(device)
         embedder.eval()
@@ -188,20 +201,20 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             global BASELINE_SEMDIST
             BASELINE_SEMDIST = np.mean(data.progress_apply(lambda row: RMSE(row['semantic_vector_baseline'], row['target_semantic_vector']),axis=1))
 
-            if tasks == 'all' or 'copy-synthesis' in tasks:
+            if 'copy-synthesis' in tasks:
                 if ('semantic_vector_copy-synthesis' not in data.columns) or (data['semantic_vector_copy-synthesis'].isnull().any()) or (not len(data.index)):
                     data['semantic_vector_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
                 if ('semantic_rank_copy-synthesis' not in data.columns) or (data['semantic_rank_copy-synthesis'].isnull().any()) or (not len(data.index)):
                     data['semantic_rank_copy-synthesis'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_copy-synthesis'], row['label']),axis=1)
 
-            if tasks == 'all' or 'semantic-acoustic' in tasks:
+            if 'semantic-acoustic' in tasks:
                 if ('semantic_vector_semantic-acoustic' not in data.columns) or (data['semantic_vector_semantic-acoustic'].isnull().any()) or (not len(data.index)):
                     data['semantic_vector_semantic-acoustic'] = data['log_mel_semantic-acoustic'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
                 if ('semantic_rank_semantic-acoustic' not in data.columns) or (data['semantic_rank_semantic-acoustic'].isnull().any()) or (not len(data.index)):
                     data['semantic_rank_semantic-acoustic'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_semantic-acoustic'], row['label']),axis=1)
 
 
-            if tasks == 'all' or 'semantic-only' in tasks:
+            if 'semantic-only' in tasks:
                 if ('semantic_vector_semantic-only' not in data.columns) or (data['semantic_vector_semantic-only'].isnull().any()) or (not len(data.index)):
                     data['semantic_vector_semantic-only'] = data['log_mel_semantic-only'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
                 if ('semantic_rank_semantic-only' not in data.columns) or (data['semantic_rank_semantic-only'].isnull().any()) or (not len(data.index)):
@@ -215,46 +228,45 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
     #scores = dict()
     if precomputed_scores is None:
-        scores = pd.DataFrame(columns = ['task', 'score_total', 'score_acoustic','score_articulatory', 'score_semantic'])
+        scores = pd.DataFrame(columns = ['task', 'score_total'])
     else:
         scores = precomputed_scores.copy()
-
-    if tasks == 'all':
-        tasks = ('copy-synthesis', 'semantic-acoustic',
-    'semantic-only')
 
     scores['task'] = tasks
 
     for task in tasks:
-        # articulation
-        if subscores == 'all' or 'articulatory' in subscores:
+        # articulatory
+        if 'articulatory' in subscores:
             if ('score_articulatory' not in scores.columns) or (scores.loc[scores.task == task, 'score_articulatory'].isnull().any()) or (not len(scores.index)):
                 s_articulatory, subscores_articulatory = score_articulatory(data, task=task)
-                scores.loc[scores.task == task, 'score_articulatory'] = s_articulatory
                 if return_individual_subscores:
                     scores.loc[scores.task == task, 'score_articulatory/tongue_height'] = subscores_articulatory[0]
                     scores.loc[scores.task == task, 'score_articulatory/ema'] = subscores_articulatory[1]
                     scores.loc[scores.task == task, 'score_articulatory/velocity_jerk'] = subscores_articulatory[2]
+                else:
+                    scores.loc[scores.task == task, 'score_articulatory'] = s_articulatory
 
         # acoustic
-        if subscores == 'all' or 'acoustic' in subscores:
+        if 'acoustic' in subscores:
             if ('score_acoustic' not in scores.columns) or (scores.loc[scores.task == task, 'score_acoustic'].isnull().any()) or (not len(scores.index)):
                 s_acoustic, subscores_acoustic = score_acoustic(data, task=task)
-                scores.loc[scores.task == task, 'score_acoustic'] = s_acoustic
                 if return_individual_subscores:
                     scores.loc[scores.task == task, 'score_acoustic/loudness'] = subscores_acoustic[0]
                     scores.loc[scores.task == task, 'score_acoustic/spectrogram'] = subscores_acoustic[1]
+                else:
+                    scores.loc[scores.task == task, 'score_acoustic'] = s_acoustic
 
         # semantic
-        if subscores == 'all' or 'semantic' in subscores:
+        if 'semantic' in subscores:
             if ('score_semantic' not in scores.columns) or (scores.loc[scores.task == task, 'score_semantic'].isnull().any()) or (not len(scores.index)):
                 s_semantic, subscores_semantic = score_semantic(data, task=task)
-                scores.loc[scores.task == task, 'score_semantic'] = s_semantic
                 if return_individual_subscores:
                     scores.loc[scores.task == task, 'score_semantic/distance'] = subscores_semantic[0]
                     scores.loc[scores.task == task, 'score_semantic/rank'] = subscores_semantic[1]
+                else:
+                    scores.loc[scores.task == task, 'score_semantic'] = s_semantic
 
-    scores["score_total"] = scores.iloc[:,2:].sum(axis=1)/3
+    scores["score_total"] = scores.iloc[:,2:].sum(axis=1)
 
     return scores.score_total, scores, data
 
@@ -263,23 +275,27 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 ########## Score Articulatory ##########
 ########################################
 def score_articulatory(data, *, task):
-    s_tongue_height = score_tongue_height(data,task=task)
+    s_tongue_height = score_tongue_height(data, task=task)
     s_ema = score_ema(data, task=task)
-    s_vel_jerk = score_vel_jerk(data,task=task)
+    s_vel_jerk = score_vel_jerk(data, task=task)
 
     s_articulatory = s_tongue_height + s_ema + s_vel_jerk
     return s_articulatory, [s_tongue_height, s_ema, s_vel_jerk]
 
+
 def score_tongue_height(data, task):
-    s_tongue_height = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'tongue_heights_{task}'], row['tongue_heights_ultra']),axis=1)) / BASELINE_TONGUE_HEIGHT)
+    s_tongue_height = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'tongue_heights_{task}'], row['tongue_heights_ultra']), axis=1)) / BASELINE_TONGUE_HEIGHT)
     return s_tongue_height
 
+
 def score_ema(data, task):
-    s_ema = None
+    s_ema = np.NaN
+    # TODO
     return s_ema
 
+
 def score_vel_jerk(data,task):
-    temp_dat = data[f'cps_{task}'].apply(get_vel_acc_jerk)
+    temp_dat = list(data[f'cps_{task}'].apply(get_vel_acc_jerk))
     df_temp = pd.DataFrame(temp_dat, columns=['vel', 'acc', 'jerk'])
     max_vels = df_temp.vel.apply(np.amax)
     max_jerks = df_temp.jerk.apply(np.amax)
@@ -292,7 +308,6 @@ def score_vel_jerk(data,task):
 
     s_vel_jerk = 100 * (2 - np.mean(max_vels) / MAX_VEL_GECO - np.mean(max_jerks) / MAX_JERK_GECO)
     return s_vel_jerk
-
 
 
 ########################################
@@ -341,3 +356,7 @@ def sem_rank(semvec, label):
     dist_argsort = np.argsort(dist)
     rank_target = np.where(dist_argsort == true_index)[0][0] + 1
     return rank_target
+
+
+    results = score(control_models.synth_paule_fast)
+

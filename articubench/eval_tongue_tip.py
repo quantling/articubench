@@ -132,4 +132,5 @@ def tonge_tip_tiny():
         # create EMA
 
 # TODO: NOT FINISHED, look at score.py first
+# TODO: continue here: /home/tino/Documents/phd/projects/essv2020/04_apply_measures.py
 

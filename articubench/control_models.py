@@ -32,9 +32,10 @@ import sys
 import numpy as np
 import torch
 
-#from paule import paule, util
-import paule
-import util
+from paule import paule
+
+from .  import util
+
 
 VTL_NEUTRAL_TRACT = np.array([1.0, -4.75, 0.0, -2.0, -0.07, 0.95, 0.0, -0.1, -0.4, -1.46, 3.5, -1.0, 2.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0])
 VTL_NEUTRAL_TRACT.shape = (1, 19)
@@ -81,7 +82,7 @@ def synth_paule_acoustic_semvec(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=n_samples,
+                target_seq_length=int(n_samples // 2),
                 target_acoustic=None,
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -97,7 +98,7 @@ def synth_paule_acoustic_semvec(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=n_samples,
+                target_seq_length=int(n_samples // 2),
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -136,7 +137,7 @@ def synth_paule_fast(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=n_samples,
+                target_seq_length=int(n_samples // 2),
                 target_acoustic=None,
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -152,7 +153,7 @@ def synth_paule_fast(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=n_samples,
+                target_seq_length=int(n_samples // 2),
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",

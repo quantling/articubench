@@ -15,7 +15,7 @@ from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jer
 from .eval_tongue_height import tongue_heights_from_cps
 from .embedding_models import MelEmbeddingModel
 from .control_models import synth_baseline_schwa
-from .import control_models
+from . import control_models
 from . import benchmark_data
 
 tqdm.pandas()
@@ -32,6 +32,8 @@ MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.04440
        0.040585  , 0.0006106 , 0.        , 0.        , 0.        ])
 """
 MAX_VEL_GECO = 0.081634
+MAX_VEL_GECO = 1500.0
+# TODO: 0.9 quantile?
 """
 MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.78314286e-02,
        2.47940000e-02, 1.23300000e-03, 3.47480000e-02, 9.73363636e-03,
@@ -43,6 +45,8 @@ MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.7831
        0.00000000e+00, 0.00000000e+00])
 """
 MAX_JERK_GECO = 0.034748
+MAX_JERK_GECO = 1500.0
+# TODO: 0.9 quantile?
 
 #LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/label_vectors.pkl"))
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
@@ -266,7 +270,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                 else:
                     scores.loc[scores.task == task, 'score_semantic'] = s_semantic
 
-    scores["score_total"] = scores.iloc[:,2:].sum(axis=1)
+    scores["score_total"] = scores.iloc[:, 2:].sum(axis=1)
 
     return scores.score_total, scores, data
 
@@ -306,7 +310,7 @@ def score_vel_jerk(data,task):
     del df_temp
     del temp_dat
 
-    s_vel_jerk = 100 * (2 - np.mean(max_vels) / MAX_VEL_GECO - np.mean(max_jerks) / MAX_JERK_GECO)
+    s_vel_jerk = 100 * (1 - np.mean(max_vels) / MAX_VEL_GECO - np.mean(max_jerks) / MAX_JERK_GECO)
     return s_vel_jerk
 
 

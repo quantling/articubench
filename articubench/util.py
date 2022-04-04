@@ -514,7 +514,7 @@ def cps_to_ema(cps):
         returns the 3D ema points for different virtual EMA sensors in a
         pandas.DataFrame
     """
-    with tempfile.TemporaryDirectory(prefix='python_paule_') as path:
+    with tempfile.TemporaryDirectory(prefix='python_articubench_') as path:
         file_name = 'pyndl_util_ema_export'
         cps_to_ema_and_mesh(cps, file_prefix=file_name, path=path)
         emas = pd.read_table(os.path.join(path, f"{file_name}-ema.txt"), sep=' ')

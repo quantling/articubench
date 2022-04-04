@@ -149,11 +149,12 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
         if 'semantic-only' in tasks:
             if ('tongue_heights_semantic-only' not in data.columns) or (data['tongue_heights_semantic-only'].isnull().any()) or (not len(data.index)):
+                # TODO: only calculate tongue height where ultra sound data is available for comparison TODO
                 data['tongue_heights_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
 
 
     # calculate log-mel spectrograms
-    if subscores == 'all' or 'acoustic' in subscores or 'semantic' in subscores:
+    if 'acoustic' in subscores or 'semantic' in subscores:
         if ('log_mel_baseline' not in data.columns) or (data['log_mel_baseline'].isnull().any()) or (not len(data.index)):
                 data['log_mel_baseline'] = data['sig_baseline'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig, 44100)))
         if ('loudness_baseline' not in data.columns) or (data['loudness_baseline'].isnull().any()) or (not len(data.index)):
@@ -188,7 +189,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         BASELINE_LOUDNESS = np.mean(data.progress_apply(lambda row: RMSE(row['loudness_baseline'], row['target_loudness']), axis=1))
 
     # predict vector embeddings
-    if subscores == 'all' or 'semantic' in subscores:
+    if 'semantic' in subscores:
         embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
         embedder.load_state_dict(torch.load(
             os.path.join(DIR, "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),

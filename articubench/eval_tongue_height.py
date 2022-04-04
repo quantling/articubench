@@ -1,5 +1,5 @@
 import os
-import shutil
+import tempfile
 
 from xml.dom import minidom
 import numpy as np
@@ -118,13 +118,11 @@ def rigid_transform_3D(A, B):
 
 
 def tongue_heights_from_cps(cps):
-    # TODO: make svgs folder a temp folder
-    export_svgs(cps, path='svgs/', hop_length=5)
-    tongue_pos = []
+    with tempfile.TemporaryDirectory(prefix='python_articubench_') as path:
+        export_svgs(cps, path=path, hop_length=5)
+        tongue_pos = []
 
-    for svg in np.sort(os.listdir("svgs")):
-        tongue_pos += [extract_highest_tongue_pos(os.path.join('svgs/', svg))]
-
-    shutil.rmtree("svgs")
+        for svg in np.sort(os.listdir(path)):
+            tongue_pos += [extract_highest_tongue_pos(os.path.join(path, svg))]
 
     return np.asarray(tongue_pos)

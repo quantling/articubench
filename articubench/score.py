@@ -4,6 +4,7 @@ Here the benchmark subscores and the total score are calculated.
 """
 import os
 from collections import abc
+import time
 
 import numpy as np
 import pandas as pd
@@ -75,6 +76,8 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
     """
 
+    start_time = time.time()
+
     if (not isinstance(subscores, abc.Sequence) and not isinstance(tasks, str)) or (isinstance(tasks, str) and tasks != 'all'):
         raise ValueError('tasks has to be either list of tasks or "all"')
     if (not isinstance(subscores, abc.Sequence) and not isinstance(subscores, str)) or (isinstance(subscores, str) and subscores != 'all'):
@@ -86,6 +89,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         subscores = ('acoustic', 'articulatory', 'semantic')
 
     # load data
+    print("load data")
     if preloaded_data is None:
         if size == 'tiny':
             data = benchmark_data.load_tiny()
@@ -101,6 +105,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
 
     # generate Baseline:
+    print("generate baseline")
     if ('cps_baseline' not in data.columns) or (data['cps_baseline'].isnull().any()) or (not len(data.index)):
         data['cps_baseline'] = data.len_cp.progress_apply(synth_baseline_schwa)
     if ('sig_baseline' not in data.columns) or (data['sig_baseline'].isnull().any()) or (not len(data.index)):
@@ -120,6 +125,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             data['cps_semantic-only'] = data.progress_apply(lambda row: model(row['len_cp'], target_semantic_vector=row['target_semantic_vector']),axis=1)
 
     # synthesise cps
+    print("synthesise cps")
     if 'copy-synthesis' in tasks:
         if ('sig_copy-synthesis' not in data.columns) or (data['sig_copy-synthesis'].isnull().any()) or (not len(data.index)):
             data['sig_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
@@ -133,6 +139,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             data['sig_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: speak(cps)[0])
 
     # calculate tongue heights
+    print("calculate tongue height")
     if subscores == 'all' or 'articulatory' in subscores:
         if ('tongue_heights_baseline' not in data.columns) or (data['tongue_heights_baseline'].isnull().any()) or (not len(data.index)):
             data['tongue_heights_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
@@ -154,6 +161,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
 
     # calculate log-mel spectrograms
+    print("calculate log-mel spectrogram")
     if 'acoustic' in subscores or 'semantic' in subscores:
         if ('log_mel_baseline' not in data.columns) or (data['log_mel_baseline'].isnull().any()) or (not len(data.index)):
                 data['log_mel_baseline'] = data['sig_baseline'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig, 44100)))
@@ -189,6 +197,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         BASELINE_LOUDNESS = np.mean(data.progress_apply(lambda row: RMSE(row['loudness_baseline'], row['target_loudness']), axis=1))
 
     # predict vector embeddings
+    print("predict vector embedding")
     if 'semantic' in subscores:
         embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
         embedder.load_state_dict(torch.load(
@@ -239,9 +248,11 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
     scores['task'] = tasks
 
+    print("Start tasks...")
     for task in tasks:
         # articulatory
         if 'articulatory' in subscores:
+            print("articulatory task")
             if ('score_articulatory' not in scores.columns) or (scores.loc[scores.task == task, 'score_articulatory'].isnull().any()) or (not len(scores.index)):
                 s_articulatory, subscores_articulatory = score_articulatory(data, task=task)
                 if return_individual_subscores:
@@ -253,6 +264,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
         # acoustic
         if 'acoustic' in subscores:
+            print("acoustic task")
             if ('score_acoustic' not in scores.columns) or (scores.loc[scores.task == task, 'score_acoustic'].isnull().any()) or (not len(scores.index)):
                 s_acoustic, subscores_acoustic = score_acoustic(data, task=task)
                 if return_individual_subscores:
@@ -263,6 +275,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
         # semantic
         if 'semantic' in subscores:
+            print("semantic task")
             if ('score_semantic' not in scores.columns) or (scores.loc[scores.task == task, 'score_semantic'].isnull().any()) or (not len(scores.index)):
                 s_semantic, subscores_semantic = score_semantic(data, task=task)
                 if return_individual_subscores:
@@ -272,6 +285,9 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                     scores.loc[scores.task == task, 'score_semantic'] = s_semantic
 
     scores["score_total"] = scores.iloc[:, 2:].sum(axis=1)
+
+    minutes = (time.time() - start_time) / 60
+    print(f"TOTAL WALL TIME USED: {minutes:.2f} min")
 
     return scores.score_total, scores, data
 

@@ -8,7 +8,7 @@ rougly 2.5 Milliseconds. Dimensions are (seq_length, 30), where the first 19
 values of the second dimension are the tract values and the 11 remaining are
 the glottis values.
 
-Inputs of the control model are: n_samples, target_semantic_vector,
+Inputs of the control model are: seq_length, target_semantic_vector,
 target_audio, sampling_rate)
 
 Memory Usage
@@ -29,19 +29,19 @@ import ctypes
 import os
 import shutil
 import subprocess
+import tempfile
+
 from praatio import textgrid
 from sklearn.metrics.pairwise import euclidean_distances
-
 import numpy as np
 import pandas as pd
 import torch
 import soundfile as sf
+from paule import paule
 
-from .paule import paule
 from .embedding_models import  MelEmbeddingModel
-
-
 from . import util
+
 
 DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DIR = os.path.dirname(__file__)
@@ -80,21 +80,22 @@ sampa_convert_dict = {
     'eU':'OY'
 }
 
-def synth_baseline_schwa(n_samples, *, target_semantic_vector=None, target_audio=None,
+def synth_baseline_schwa(seq_length, *, target_semantic_vector=None, target_audio=None,
         sampling_rate=None):
 
-    cps = np.zeros((n_samples, 30))
+    cps = np.zeros((seq_length, 30))
     cps[:, :19] = VTL_NEUTRAL_TRACT
     cps[:, 19:] = VTL_NEUTRAL_GLOTTIS
 
     # ramp in pressure
-    fade_in = min(n_samples, 1000)
+    fade_in = min(seq_length, 1000)
     cps[:fade_in, 20] *= np.linspace(0, 1, fade_in)
 
+    assert cps.shape[0] == seq_length
     return cps
 
 
-def synth_paule_acoustic_semvec(n_samples, *, target_semantic_vector=None,
+def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
         target_audio=None, sampling_rate=None):
     if target_semantic_vector is None and target_audio is None:
         raise ValueError("You have to either give target_semantic_vector or "
@@ -117,7 +118,7 @@ def synth_paule_acoustic_semvec(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=int(n_samples // 2),
+                target_seq_length=int(seq_length // 2),
                 target_acoustic=None,
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -133,7 +134,7 @@ def synth_paule_acoustic_semvec(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=int(n_samples // 2),
+                target_seq_length=int(seq_length // 2),
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -146,10 +147,11 @@ def synth_paule_acoustic_semvec(n_samples, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=True)
     cps = results.planned_cp.copy()
+    assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
 
 
-def synth_paule_fast(n_samples, *, target_semantic_vector=None,
+def synth_paule_fast(seq_length, *, target_semantic_vector=None,
         target_audio=None, sampling_rate=None):
     if target_semantic_vector is None and target_audio is None:
         raise ValueError("You have to either give target_semantic_vector or "
@@ -172,7 +174,7 @@ def synth_paule_fast(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=int(n_samples // 2),
+                target_seq_length=int(seq_length // 2),
                 target_acoustic=None,
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -188,7 +190,7 @@ def synth_paule_fast(n_samples, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=int(n_samples // 2),
+                target_seq_length=int(seq_length // 2),
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -201,18 +203,50 @@ def synth_paule_fast(n_samples, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
+    assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
 
 
-def synth_baseline_segment(n_samples, *, target_semantic_vector=None, target_audio=None,
-        sampling_rate=None):
-    mfa_check = subprocess.run(['type', '-P', 'mfa'], capture_output=True, text=True).stdout
-    if mfa_check == "":
-        raise ModuleNotFoundError("Montreal-Forced-Aligner not found.Please install:\n  mfa ---> https://montreal-forced-aligner.readthedocs.io/en/latest/installation.html\n ansiwrap: https://pypi.org/project/ansiwrap/ \n sox: https://anaconda.org/conda-forge/sox")
+def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_audio=None,
+        sampling_rate=None, verbose=True):
+    command = 'conda run -n aligner mfa version'
+    output = subprocess.run(command.split(), capture_output=True, text=True).stderr
+    if "ERROR" in output:
+        raise ModuleNotFoundError(
+        """
+        Montreal-Forced-Aligner not found.
 
-    else:
-        if not os.path.exists(os.path.join(DIR,"temp_input")):
-            os.mkdir(os.path.join(DIR,"temp_input"))
+        Please install mfa into a conda environment named 'aligner', e. g. with::
+
+            conda create -n aligner -c conda-forge montreal-forced-aligner
+
+        Test if the installation was successful with 'conda run -n aligner mfa version'.
+
+        https://montreal-forced-aligner.readthedocs.io/en/latest/installation.html
+        """)
+
+    # download mfa data if not already downlaoded
+    command = 'conda run -n aligner mfa model list acoustic'
+    output = subprocess.run(command.split(), capture_output=True, text=True).stdout
+    if not 'german_mfa' in output:
+        command = 'conda run -n aligner mfa model download g2p german_mfa'
+        subprocess.run(command.split())
+    command = 'conda run -n aligner mfa model list g2p'
+    output = subprocess.run(command.split(), capture_output=True, text=True).stdout
+    if not 'german_mfa' in output:
+        command = 'conda run -n aligner mfa model download acoustic german_mfa'
+        subprocess.run(command.split())
+    del output
+
+    with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
+    #if True:
+        path = DIR
+
+        if verbose:
+            print(f"Temporary folder for segment based approach is: {path}")
+
+        if not os.path.exists(os.path.join(path, "temp_input")):
+            os.mkdir(os.path.join(path, "temp_input"))
 
         if target_semantic_vector is None and (target_audio is None or sampling_rate is None):
             raise ValueError("You have to either give target_semantic_vector or "
@@ -223,8 +257,8 @@ def synth_baseline_segment(n_samples, *, target_semantic_vector=None, target_aud
                 label,phones, phone_durations = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)][["label","phones" ,"phone_durations"]].iloc[0]
             except IndexError as e:
                 raise ValueError("Unknown Semantic Vector.") from None
-            if not os.path.exists(os.path.join(DIR, "temp_output")):
-                os.mkdir(os.path.join(DIR, "temp_output"))
+            if not os.path.exists(os.path.join(path, "temp_output")):
+                os.mkdir(os.path.join(path, "temp_output"))
         else:
             if target_semantic_vector is None:
                 # predict label
@@ -244,19 +278,26 @@ def synth_baseline_segment(n_samples, *, target_semantic_vector=None, target_aud
                     raise ValueError("Unknown Semantic Vector.") from None
 
             # store input
-            sf.write(os.path.join(DIR,'temp_input/target_audio.wav'), target_audio, sampling_rate)
-            with open(os.path.join(DIR,'temp_input/target_audio.txt'), 'w') as f:
+            sf.write(os.path.join(path,'temp_input/target_audio.wav'), target_audio, sampling_rate)
+            with open(os.path.join(path,'temp_input/target_audio.txt'), 'w') as f:
                 f.write(label)
 
             # align input
-            subprocess.run(['mfa', 'model','download','g2p','german_g2p'])
-            subprocess.run(['mfa', 'g2p', 'german_g2p', f'{os.path.join(DIR,"temp_input")}',f'{os.path.join(DIR,"temp_input/target_dict.txt")}'])
-            subprocess.run(['mfa', 'model', 'download', 'acoustic', 'german'])
-            subprocess.run(['mfa', 'configure', '-t', f'{os.path.join(DIR, "temp_output")}'])
-            subprocess.run(['mfa', 'align', f'{os.path.join(DIR,"temp_input")}', f'{os.path.join(DIR,"temp_input/target_dict.txt")}', 'german', f'{os.path.join(DIR,"temp_output")}', '--clean'])
+            command = ('conda run -n aligner mfa g2p german_mfa'.split()
+                    + [os.path.join(path, "temp_input"), os.path.join(path, "temp_input/target_dict.txt")])
+            subprocess.run(command)
+            command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output"),]
+            subprocess.run(command)
+            command = ('conda run -n aligner mfa align'.split()
+                    + [os.path.join(path,"temp_input"),
+                       os.path.join(path,"temp_input/target_dict.txt"),
+                       'german_mfa',
+                       os.path.join(path,"temp_output"),
+                       '--clean'])
+            subprocess.run(command)
 
             # extract sampa phones
-            tg = textgrid.openTextgrid(f'{os.path.join(DIR,"temp_output/temp_input_pretrained_aligner/pretrained_aligner/textgrids/target_audio.TextGrid")}',False)
+            tg = textgrid.openTextgrid(os.path.join(path, "temp_output/temp_input_pretrained_aligner/pretrained_aligner/textgrids/target_audio.TextGrid"), False)
             word = tg.tierDict['words'].entryList[0]
             phones = list()
             phone_durations = list()
@@ -278,27 +319,42 @@ def synth_baseline_segment(n_samples, *, target_semantic_vector=None, target_aud
             row = "name = %s; duration_s = %f;" % (phone, phone_durations[i])
             rows.append(row)
         text = "\n".join(rows)
-        seg_file_name = str(f'{os.path.join(DIR,"temp_output/target_audio.seg")}')
+        seg_file_name = str(os.path.join(path,"temp_output/target_audio.seg"))
         with open(seg_file_name, "w") as text_file:
             text_file.write(text)
 
         # get tract files and gesture score
         seg_file_name = ctypes.c_char_p(seg_file_name.encode())
 
-        ges_file_name = str(f'{os.path.join(DIR,"temp_output/target_audio.ges")}')
+        ges_file_name = str(os.path.join(path,"temp_output/target_audio.ges"))
         ges_file_name = ctypes.c_char_p(ges_file_name.encode())
 
         util.VTL.vtlSegmentSequenceToGesturalScore(seg_file_name, ges_file_name)
-        tract_file_name = str(f'{os.path.join(DIR,"temp_output/target_audio.txt")}')
+        tract_file_name = str(os.path.join(path,"temp_output/target_audio.txt"))
         c_tract_file_name = ctypes.c_char_p(tract_file_name.encode())
 
         util.VTL.vtlGesturalScoreToTractSequence(ges_file_name, c_tract_file_name)
         cps = util.read_cp(tract_file_name)
 
         # remove temp folder
-        shutil.rmtree(f'{os.path.join(DIR,"temp_input")}')
-        shutil.rmtree(f'{os.path.join(DIR,"temp_output")}')
+        #shutil.rmtree(f'{os.path.join(path,"temp_input")}')
+        #shutil.rmtree(f'{os.path.join(path,"temp_output")}')
+    current_length = cps.shape[0] 
+    if current_length < seq_length:
+        print(f"WARNING: segment based approach produced cps that are to short"
+              f" (seg: {current_length}, target: {seq_length}). We pad same to"
+              f" target length.")
+        padding_size = seq_length - current_length
+        padding = np.tile(cps[-1 :], (padding_size, 1))
+        cps = np.concatenate((cps, padding), axis=0)
+    elif current_length > seq_length:
+        print(f"WARNING: segment based approach produced cps that are to long"
+              f" (seg: {current_length}, target: {seq_length}). We crop to the"
+              f" target length.")
+        cps = cps[:seq_length, :]
+    assert cps.shape[0] == seq_length
     return cps
+
 
 control_models_to_evaluate = {'baseline': synth_baseline_schwa,
         'paule_fast': synth_paule_fast}

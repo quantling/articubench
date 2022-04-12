@@ -30,6 +30,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import pickle
 
 from praatio import textgrid
 from sklearn.metrics.pairwise import euclidean_distances
@@ -37,7 +38,7 @@ import numpy as np
 import pandas as pd
 import torch
 import soundfile as sf
-from paule import paule
+#from paule import paule
 
 from .embedding_models import  MelEmbeddingModel
 from . import util
@@ -54,7 +55,7 @@ VTL_NEUTRAL_TRACT.shape = (1, 19)
 VTL_NEUTRAL_GLOTTIS = np.array([120.0, 8000.0, 0.01, 0.02, 0.05, 1.22, 1.0, 0.05, 0.0, 25.0, -10.0])
 VTL_NEUTRAL_GLOTTIS.shape = (1, 11)
 
-PAULE_MODEL = paule.Paule(device=torch.device('cpu'))
+#PAULE_MODEL = paule.Paule(device=torch.device('cpu'))
 
 embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
 embedder.load_state_dict(torch.load(
@@ -63,7 +64,7 @@ embedder.load_state_dict(torch.load(
 embedder = embedder.to(DEVICE)
 embedder.eval()
 
-sampa_convert_dict = {
+"""sampa_convert_dict = {
     'etu':'@',
     'atu':'6',
     'al':'a:',
@@ -78,7 +79,9 @@ sampa_convert_dict = {
     'ue':'Y',
     'ng':'N',
     'eU':'OY'
-}
+}"""
+with open(os.path.join(DIR, "data/sampa_ipa_dict.pkl"), 'rb') as handle:
+    sampa_convert_dict = pickle.load(handle)
 
 def synth_baseline_schwa(seq_length, *, target_semantic_vector=None, target_audio=None,
         sampling_rate=None):
@@ -226,21 +229,23 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         """)
 
     # download mfa data if not already downlaoded
-    command = 'conda run -n aligner mfa model list acoustic'
-    output = subprocess.run(command.split(), capture_output=True, text=True).stdout
-    if not 'german_mfa' in output:
-        command = 'conda run -n aligner mfa model download g2p german_mfa'
-        subprocess.run(command.split())
     command = 'conda run -n aligner mfa model list g2p'
     output = subprocess.run(command.split(), capture_output=True, text=True).stdout
     if not 'german_mfa' in output:
+        print("Dowloading g2p model...")
+        command = 'conda run -n aligner mfa model download g2p german_mfa'
+        subprocess.run(command.split())
+    command = 'conda run -n aligner mfa model list acoustic'
+    output = subprocess.run(command.split(), capture_output=True, text=True).stdout
+    if not 'german_mfa' in output:
+        print("Dowloading acoustic model...")
         command = 'conda run -n aligner mfa model download acoustic german_mfa'
         subprocess.run(command.split())
     del output
 
     with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
     #if True:
-        path = DIR
+        #path = DIR
 
         if verbose:
             print(f"Temporary folder for segment based approach is: {path}")
@@ -283,10 +288,10 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 f.write(label)
 
             # align input
-            command = ('conda run -n aligner mfa g2p german_mfa'.split()
-                    + [os.path.join(path, "temp_input"), os.path.join(path, "temp_input/target_dict.txt")])
+            command = ('conda run -n aligner mfa g2p german_mfa '.split()
+                    + [os.path.join(path, "temp_input"), os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
             subprocess.run(command)
-            command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output"),]
+            command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output")]
             subprocess.run(command)
             command = ('conda run -n aligner mfa align'.split()
                     + [os.path.join(path,"temp_input"),
@@ -307,10 +312,10 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 if phone.start < word.start:
                     continue
 
-                if phone.label in sampa_convert_dict.keys():
+                try:
                     phones.append(sampa_convert_dict[phone.label])
-                else:
-                    phones.append(phone.label)
+                except KeyError as e:
+                    raise ValueError("Unknown Phone transcribed.") from None
                 phone_durations.append(phone.end - phone.start)
 
         # write seg file
@@ -337,9 +342,10 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         cps = util.read_cp(tract_file_name)
 
         # remove temp folder
-        #shutil.rmtree(f'{os.path.join(path,"temp_input")}')
-        #shutil.rmtree(f'{os.path.join(path,"temp_output")}')
-    current_length = cps.shape[0] 
+        #shutil.rmtree(os.path.join(path,"temp_input"))
+        #shutil.rmtree(os.path.join(path,"temp_output"))
+    current_length = cps.shape[0]
+
     if current_length < seq_length:
         print(f"WARNING: segment based approach produced cps that are to short"
               f" (seg: {current_length}, target: {seq_length}). We pad same to"
@@ -353,6 +359,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
               f" target length.")
         cps = cps[:seq_length, :]
     assert cps.shape[0] == seq_length
+
     return cps
 
 

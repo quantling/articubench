@@ -33,8 +33,8 @@ MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.04440
        0.040585  , 0.0006106 , 0.        , 0.        , 0.        ])
 """
 MAX_VEL_GECO = 0.081634
-MAX_VEL_GECO = 1500.0
-# TODO: 0.9 quantile?
+MAX_VEL_GECO = 150.0
+
 """
 MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.78314286e-02,
        2.47940000e-02, 1.23300000e-03, 3.47480000e-02, 9.73363636e-03,
@@ -46,8 +46,7 @@ MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.7831
        0.00000000e+00, 0.00000000e+00])
 """
 MAX_JERK_GECO = 0.034748
-MAX_JERK_GECO = 1500.0
-# TODO: 0.9 quantile?
+MAX_JERK_GECO = 150.0
 
 #LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/label_vectors.pkl"))
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
@@ -315,19 +314,39 @@ def score_ema(data, task):
     return s_ema
 
 
-def score_vel_jerk(data,task):
+def score_vel_jerk(data, task):
+    """
+    On a logarithmic scale and cannot be lower than 0, even for very bad
+    (high) velocities and jerks.
+
+    Use the 99.9% quantile instead of the maximal value to be a little bit
+    better prepared against very few outliers.
+
+    Note: Uses side effects to add columns to data inplace.
+
+    """
     temp_dat = list(data[f'cps_{task}'].apply(get_vel_acc_jerk))
     df_temp = pd.DataFrame(temp_dat, columns=['vel', 'acc', 'jerk'])
     max_vels = df_temp.vel.apply(np.amax)
     max_jerks = df_temp.jerk.apply(np.amax)
+    quantile_vels = df_temp.vel.apply(lambda x: np.quantile(x, .999))
+    quantile_jerks = df_temp.jerk.apply(lambda x: np.quantile(x, .999))
 
     data[f'max_vel_{task}'] = max_vels
     data[f'max_jerk_{task}'] = max_jerks
+    data[f'quantile999_vel_{task}'] = quantile_vels
+    data[f'quantile999_jerk_{task}'] = quantile_jerks
 
     del df_temp
     del temp_dat
 
-    s_vel_jerk = 100 * (1 - np.mean(max_vels) / MAX_VEL_GECO - np.mean(max_jerks) / MAX_JERK_GECO)
+    #s_vel = 1 - min(np.mean(np.log(1 + quantile_vels)) / np.log(1 + MAX_VEL_GECO), 0.5)
+    #print(f's_vel: {s_vel}')
+    #s_jerk = 1 - min(np.mean(np.log(1 + quantile_jerks)) / np.log(1 + MAX_JERK_GECO), 0.5)
+    #print(f's_jerk: {s_jerk}')
+
+    s_vel_jerk = 100 * (1 - min(np.mean(np.log(1 + quantile_vels)) / np.log(1 + MAX_VEL_GECO), 0.5)
+                          - min(np.mean(np.log(1 + quantile_jerks)) / np.log(1 + MAX_JERK_GECO), 0.5))
     return s_vel_jerk
 
 
@@ -361,7 +380,7 @@ def score_semantic(data, *, task):
     s_semantic = s_sem_dist + s_sem_rank
     return s_semantic, [s_sem_dist, s_sem_rank]
 
-def score_sem_dist(data,task):
+def score_sem_dist(data, task):
     s_sem_dist = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'semantic_vector_{task}'], row['target_semantic_vector']),axis=1)) / BASELINE_SEMDIST)
     return s_sem_dist
 

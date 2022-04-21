@@ -3,11 +3,19 @@ This code documents and shows how the data is gathered from the different
 Corpora used within articubench. This code will only run if you have access to
 the full corpora and have put them in the right path.
 
+.. warning::
+
+    This module is not in any consistent state! At the moment this is a
+    collection of code snippeds on how the data is generated in the first
+    place. This is not needed to run the benchmark.
+
 """
 
 import pandas as pd
 import soundfile as sf
 from tqdm import tqdm
+
+# TODO clean this file
 
 ######################################################
 ### KEC /ja/ /halt/ (Sering & Tomaschek ESSV 2020) ###
@@ -98,4 +106,24 @@ ja_halt.to_pickle('ja_halt.pickle')
 
 
 # copy ja_halt.pickle back to local machine
+
+
+
+"""
+from articubench.util import inv_normalize_cp
+import pandas as pd
+
+from articubench.eval_tongue_height import tongue_heights_from_cps
+
+data = pd.read_pickle('articubench/data/tiny_prot4.pkl')
+tmp = pd.read_pickle('articubench/data/geco_tiny.pkl')
+
+data['reference_cp'] = None
+data['reference_cp'].iloc[:2] = tmp.cp_norm.apply(inv_normalize_cp)
+
+data['reference_tongue_height'] = None
+data['reference_ema'] = None
+
+data.to_pickle('articubench/data/tiny.pkl')
+"""
 

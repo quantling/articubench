@@ -1,4 +1,6 @@
 import ctypes
+import math
+from math import asin, pi, atan2, cos
 import os
 import sys
 import tempfile
@@ -9,7 +11,6 @@ import librosa
 import torch.nn
 import pandas as pd
 import torch
-import math
 
 
 # load vocaltractlab binary
@@ -335,6 +336,8 @@ class RMSELoss(torch.nn.Module):
 rmse_loss = RMSELoss(eps=0)
 
 def RMSE(x1, x2):
+    if x1 is None or x2 is None:
+        return np.NaN
     rmse = rmse_loss(torch.from_numpy(x1),torch.from_numpy(x2))
     return rmse.item()
 
@@ -530,4 +533,117 @@ def round_up_to_even(f):
     return math.ceil(f / 2.) * 2
 
 
+def rigid_transform_3d(A, B):
+    """
+    Input: expects 3xN matrix of points
+    Returns R,t
+    R = 3x3 rotation matrix
+    t = 3x1 column vector
+
+    Source: https://github.com/nghiaho12/rigid_transform_3D/blob/master/rigid_transform_3D.py
+
+    """
+    assert A.shape == B.shape
+
+    num_rows, num_cols = A.shape
+    if num_rows != 3:
+        raise Exception(f"matrix A is not 3xN, it is {num_rows}x{num_cols}")
+
+    num_rows, num_cols = B.shape
+    if num_rows != 3:
+        raise Exception(f"matrix B is not 3xN, it is {num_rows}x{num_cols}")
+
+    # find mean column wise
+    centroid_A = np.mean(A, axis=1)
+    centroid_B = np.mean(B, axis=1)
+
+    # ensure centroids are 3x1
+    centroid_A = centroid_A.reshape(-1, 1)
+    centroid_B = centroid_B.reshape(-1, 1)
+
+    # subtract mean
+    Am = A - centroid_A
+    Bm = B - centroid_B
+
+    H = Am @ np.transpose(Bm)
+
+    # sanity check
+    #if linalg.matrix_rank(H) < 3:
+    #    raise ValueError("rank of H = {}, expecting 3".format(linalg.matrix_rank(H)))
+
+    # find rotation
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+
+    # special reflection case
+    if np.linalg.det(R) < 0:
+        print("det(R) < R, reflection detected!, correcting for it ...")
+        Vt[2,:] *= -1
+        R = Vt.T @ U.T
+
+    t = -R @ centroid_A + centroid_B
+
+    return R, t
+
+
+def calculate_roll_pitch_yaw(rotation_matrix):
+    """
+    Illustration of the rotation matrix / sometimes called 'orientation' matrix
+    R = [
+           R11 , R12 , R13,
+           R21 , R22 , R23,
+           R31 , R32 , R33
+        ]
+
+    REMARKS:
+    1. this implementation is meant to make the mathematics easy to be deciphered
+    from the script, not so much on 'optimized' code.
+    You can then optimize it to your own style.
+
+    2. I have utilized naval rigid body terminology here whereby;
+    2.1 roll -> rotation about x-axis
+    2.2 pitch -> rotation about the y-axis
+    2.3 yaw -> rotation about the z-axis (this is pointing 'upwards')
+
+    https://stackoverflow.com/a/64336115
+
+    """
+
+    r11, r12, r13 = rotation_matrix[0, :]
+    r21, r22, r23 = rotation_matrix[1, :]
+    r31, r32, r33 = rotation_matrix[2, :]
+
+    if r31 != 1 and r31 != -1:
+         pitch_1 = -1 * asin(r31)
+         pitch_2 = pi - pitch_1
+         roll_1 = atan2( r32 / cos(pitch_1) , r33 /cos(pitch_1) )
+         roll_2 = atan2( r32 / cos(pitch_2) , r33 /cos(pitch_2) )
+         yaw_1 = atan2( r21 / cos(pitch_1) , r11 / cos(pitch_1) )
+         yaw_2 = atan2( r21 / cos(pitch_2) , r11 / cos(pitch_2) )
+
+         # IMPORTANT NOTE here, there is more than one solution but we choose
+         # the first for this case for simplicity !
+         # You can insert your own domain logic here on how to handle both
+         # solutions appropriately (see the reference publication link for more
+         # info).
+         pitch = pitch_1
+         roll = roll_1
+         yaw = yaw_1
+    else:
+         yaw = 0 # anything (we default this to zero)
+         if r31 == -1:
+            pitch = pi / 2
+            roll = yaw + atan2(r12, r13)
+         else:
+            pitch = -pi / 2
+            roll = -1 * yaw + atan2(-1 * r12, -1 * r13)
+
+    # convert from radians to degrees
+    roll = roll * 180 / pi
+    pitch = pitch * 180 / pi
+    yaw = yaw * 180/pi
+
+    rxyz_deg = [roll , pitch , yaw]
+
+    return rxyz_deg
 

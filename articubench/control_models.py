@@ -26,11 +26,12 @@ Divide the fith entry VmSize/VSZ [KiB] by 1024 to get [MiB].
 
 
 import ctypes
+import math
 import os
+import pickle
 import shutil
 import subprocess
 import tempfile
-import pickle
 
 from praatio import textgrid
 from sklearn.metrics.pairwise import euclidean_distances
@@ -38,13 +39,13 @@ import numpy as np
 import pandas as pd
 import torch
 import soundfile as sf
-#from paule import paule
+from paule import paule
 
 from .embedding_models import  MelEmbeddingModel
 from . import util
 
 
-DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cpu')  #torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DIR = os.path.dirname(__file__)
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
@@ -55,7 +56,7 @@ VTL_NEUTRAL_TRACT.shape = (1, 19)
 VTL_NEUTRAL_GLOTTIS = np.array([120.0, 8000.0, 0.01, 0.02, 0.05, 1.22, 1.0, 0.05, 0.0, 25.0, -10.0])
 VTL_NEUTRAL_GLOTTIS.shape = (1, 11)
 
-#PAULE_MODEL = paule.Paule(device=torch.device('cpu'))
+PAULE_MODEL = paule.Paule(device=DEVICE)
 
 embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
 embedder.load_state_dict(torch.load(
@@ -116,7 +117,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
                 log_gradients=False,
-                plot=False, seed=None, verbose=True)
+                plot=False, seed=None, verbose=False)
     elif target_audio is None:
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
@@ -132,7 +133,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
                 log_gradients=False,
-                plot=False, seed=None, verbose=True)
+                plot=False, seed=None, verbose=False)
     else:  # both
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
@@ -148,7 +149,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
                 log_gradients=False,
-                plot=False, seed=None, verbose=True)
+                plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
     assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
@@ -211,7 +212,7 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
 
 
 def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_audio=None,
-        sampling_rate=None, verbose=True):
+        sampling_rate=None, verbose=False):
     command = 'conda run -n aligner mfa version'
     output = subprocess.run(command.split(), capture_output=True, text=True).stderr
     if "ERROR" in output:
@@ -290,16 +291,16 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
             # align input
             command = ('conda run -n aligner mfa g2p german_mfa '.split()
                     + [os.path.join(path, "temp_input"), os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
-            subprocess.run(command)
+            subprocess.run(command, capture_output=~verbose)
             command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output")]
-            subprocess.run(command)
+            subprocess.run(command, capture_output=~verbose)
             command = ('conda run -n aligner mfa align'.split()
                     + [os.path.join(path,"temp_input"),
                        os.path.join(path,"temp_input/target_dict.txt"),
                        'german_mfa',
                        os.path.join(path,"temp_output"),
                        '--clean'])
-            subprocess.run(command)
+            subprocess.run(command, capture_output=~verbose)
 
             # extract sampa phones
             tg = textgrid.openTextgrid(os.path.join(path, "temp_output/temp_input_pretrained_aligner/pretrained_aligner/textgrids/target_audio.TextGrid"), False)
@@ -356,8 +357,10 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
     elif current_length > seq_length:
         print(f"WARNING: segment based approach produced cps that are to long"
               f" (seg: {current_length}, target: {seq_length}). We crop to the"
-              f" target length.")
-        cps = cps[:seq_length, :]
+              f" target length and take the cps from the middle.")
+        start = math.floor((cps.shape[0] - seq_length) / 2)
+        end = cps.shape[0] - math.ceil((cps.shape[0] - seq_length) / 2)
+        cps = cps[start:end, :]
     assert cps.shape[0] == seq_length
 
     return cps

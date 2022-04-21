@@ -13,7 +13,7 @@ import torch
 from sklearn.metrics.pairwise import euclidean_distances
 
 from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor
-from .eval_tongue_height import tongue_heights_from_cps
+from .eval_tongue_height import tongue_height_from_cps
 from .embedding_models import MelEmbeddingModel
 from .control_models import synth_baseline_schwa
 from . import control_models
@@ -140,23 +140,23 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     # calculate tongue heights
     print("calculate tongue height")
     if subscores == 'all' or 'articulatory' in subscores:
-        if ('tongue_heights_baseline' not in data.columns) or (data['tongue_heights_baseline'].isnull().any()) or (not len(data.index)):
-            data['tongue_heights_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
+        if ('tongue_height_baseline' not in data.columns) or (data['tongue_height_baseline'].isnull().any()) or (not len(data.index)):
+            data['tongue_height_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_height_from_cps(cps))
         global BASELINE_TONGUE_HEIGHT
-        BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_heights_baseline'], row['tongue_heights_ultra']),axis=1))
+        BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_height_baseline'], row['reference_tongue_height']),axis=1))
 
         if 'copy-synthesis' in tasks:
-            if ('tongue_heights_copy-synthesis' not in data.columns) or (data['tongue_heights_copy-synthesis'].isnull().any()) or (not len(data.index)):
-                data['tongue_heights_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
+            if ('tongue_height_copy-synthesis' not in data.columns) or (data['tongue_height_copy-synthesis'].isnull().any()) or (not len(data.index)):
+                data['tongue_height_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: tongue_height_from_cps(cps))
 
         if 'semantic-acoustic' in tasks:
-            if ('tongue_heights_semantic-acoustic' not in data.columns) or (data['tongue_heights_semantic-acoustic'].isnull().any()) or (not len(data.index)):
-                data['tongue_heights_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
+            if ('tongue_height_semantic-acoustic' not in data.columns) or (data['tongue_height_semantic-acoustic'].isnull().any()) or (not len(data.index)):
+                data['tongue_height_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: tongue_height_from_cps(cps))
 
         if 'semantic-only' in tasks:
-            if ('tongue_heights_semantic-only' not in data.columns) or (data['tongue_heights_semantic-only'].isnull().any()) or (not len(data.index)):
+            if ('tongue_height_semantic-only' not in data.columns) or (data['tongue_height_semantic-only'].isnull().any()) or (not len(data.index)):
                 # TODO: only calculate tongue height where ultra sound data is available for comparison TODO
-                data['tongue_heights_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_heights_from_cps(cps))
+                data['tongue_height_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_height_from_cps(cps))
 
 
     # calculate log-mel spectrograms
@@ -304,7 +304,7 @@ def score_articulatory(data, *, task):
 
 
 def score_tongue_height(data, task):
-    s_tongue_height = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'tongue_heights_{task}'], row['tongue_heights_ultra']), axis=1)) / BASELINE_TONGUE_HEIGHT)
+    s_tongue_height = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'tongue_height_{task}'], row['reference_tongue_height']), axis=1)) / BASELINE_TONGUE_HEIGHT)
     return s_tongue_height
 
 

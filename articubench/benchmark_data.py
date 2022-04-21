@@ -46,7 +46,7 @@ import math
 import pandas as pd
 import numpy as np
 
-from .eval_tongue_height import tongue_heights_from_cps
+from .eval_tongue_height import tongue_height_from_cps
 
 
 DIR = os.path.dirname(__file__)
@@ -64,7 +64,7 @@ def load_tiny():
 
     # recompute len_cp
     data['len_cp'] = data.apply(lambda row: int(2 * math.ceil(44100 / 220 * len(row['target_sig']) / row['target_sr'])), axis=1)
-    tongue_heights = data.reference_cp.apply(lambda cp: tongue_heights_from_cps(cp) if cp is not None else None)
+    tongue_heights = data.reference_cp.apply(lambda cp: tongue_height_from_cps(cp) if cp is not None else None)
     # only set newly simulated tongue heights and leave all other tongue heights as is
     data['reference_tongue_height'][~tongue_heights.isna()] = tongue_heights[~tongue_heights.isna()]
     return data

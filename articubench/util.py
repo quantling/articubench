@@ -338,7 +338,7 @@ rmse_loss = RMSELoss(eps=0)
 def RMSE(x1, x2):
     if x1 is None or x2 is None:
         return np.NaN
-    rmse = rmse_loss(torch.from_numpy(x1),torch.from_numpy(x2))
+    rmse = rmse_loss(torch.from_numpy(x1), torch.from_numpy(x2))
     return rmse.item()
 
 def get_vel_acc_jerk(trajectory, *, lag=1):

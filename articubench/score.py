@@ -2,8 +2,8 @@
 Here the benchmark subscores and the total score are calculated.
 
 """
-import os
 from collections import abc
+import os
 import time
 
 import numpy as np
@@ -51,6 +51,17 @@ MAX_JERK_GECO = 150.0
 #LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/label_vectors.pkl"))
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
+
+BASELINE_TONGUE_HEIGHT = None
+BASELINE_SPECTROGRAM = None
+BASELINE_LOUDNESS = None
+BASELINE_SEMDIST = None
+
+def _no_data_in_column(column, data):
+    return ((column not in data.columns)
+            or (data[column].isnull().any())
+            or (not len(data.index)))
+
 
 def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     'semantic-only'), subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
@@ -105,23 +116,34 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
     # generate Baseline:
     print("generate baseline")
-    if ('cps_baseline' not in data.columns) or (data['cps_baseline'].isnull().any()) or (not len(data.index)):
+    if _no_data_in_column('cps_baseline', data):
         data['cps_baseline'] = data.len_cp.progress_apply(synth_baseline_schwa)
-    if ('sig_baseline' not in data.columns) or (data['sig_baseline'].isnull().any()) or (not len(data.index)):
+    if _no_data_in_column('sig_baseline', data):
         data['sig_baseline'] = data['cps_baseline'].progress_apply(lambda cps: speak(cps)[0])
 
     # generate cps
+    print("generate cps")
     if 'copy-synthesis' in tasks:
-        if ('cps_copy-synthesis' not in data.columns) or (data['cps_copy-synthesis'].isnull().any()) or (not len(data.index)):
-                data['cps_copy-synthesis'] = data.progress_apply(lambda row: model(row['len_cp'], target_audio=row['target_sig'], sampling_rate=row['target_sr']), axis=1)
-
+        if _no_data_in_column('cps_copy-synthesis', data):
+            data['cps_copy-synthesis'] = data.progress_apply(
+                    lambda row: model(row['len_cp'],
+                                      target_audio=row['target_sig'],
+                                      sampling_rate=row['target_sr']),
+                    axis=1)
     if 'semantic-acoustic' in tasks:
-        if ('cps_semantic-acoustic' not in data.columns) or (data['cps_semantic-acoustic'].isnull().any()) or (not len(data.index)):
-            data['cps_semantic-acoustic'] = data.progress_apply(lambda row: model(row['len_cp'], target_audio=row['target_sig'], sampling_rate=row['target_sr'], target_semantic_vector=row['target_semantic_vector']), axis=1)
-
+        if _no_data_in_column('cps_semantic-acoustic', data):
+            data['cps_semantic-acoustic'] = data.progress_apply(
+                    lambda row: model(row['len_cp'],
+                                      target_audio=row['target_sig'],
+                                      sampling_rate=row['target_sr'],
+                                      target_semantic_vector=row['target_semantic_vector']),
+                    axis=1)
     if 'semantic-only' in tasks:
-        if ('cps_semantic-only' not in data.columns) or (data['cps_semantic-only'].isnull().any()) or (not len(data.index)):
-            data['cps_semantic-only'] = data.progress_apply(lambda row: model(row['len_cp'], target_semantic_vector=row['target_semantic_vector']),axis=1)
+        if _no_data_in_column('cps_semantic-only', data):
+            data['cps_semantic-only'] = data.progress_apply(
+                    lambda row: model(row['len_cp'],
+                                      target_semantic_vector=row['target_semantic_vector']),
+                    axis=1)
 
     # synthesise cps
     print("synthesise cps")

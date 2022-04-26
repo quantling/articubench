@@ -50,6 +50,7 @@ DIR = os.path.dirname(__file__)
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
 
+
 VTL_NEUTRAL_TRACT = np.array([1.0, -4.75, 0.0, -2.0, -0.07, 0.95, 0.0, -0.1, -0.4, -1.46, 3.5, -1.0, 2.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0])
 VTL_NEUTRAL_TRACT.shape = (1, 19)
 
@@ -58,12 +59,12 @@ VTL_NEUTRAL_GLOTTIS.shape = (1, 11)
 
 PAULE_MODEL = paule.Paule(device=DEVICE)
 
-embedder = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
-embedder.load_state_dict(torch.load(
+EMBEDDER = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
+EMBEDDER.load_state_dict(torch.load(
     os.path.join(DIR, "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
     map_location=DEVICE))
-embedder = embedder.to(DEVICE)
-embedder.eval()
+EMBEDDER = EMBEDDER.to(DEVICE)
+EMBEDDER.eval()
 
 """sampa_convert_dict = {
     'etu':'@',
@@ -101,6 +102,8 @@ def synth_baseline_schwa(seq_length, *, target_semantic_vector=None, target_audi
 
 def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
         target_audio=None, sampling_rate=None):
+    OUTER = 10
+    INNER = 25
     if target_semantic_vector is None and target_audio is None:
         raise ValueError("You have to either give target_semantic_vector or "
                 "target_audio and sampling_rate or both targets.")
@@ -110,7 +113,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="acoustic",
                 objective="acoustic_semvec",
-                n_outer=10, n_inner=25,
+                n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
                 add_training_data=False,
                 log_ii=1,
@@ -126,7 +129,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 target_acoustic=None,
                 initialize_from="semvec",
                 objective="acoustic_semvec",
-                n_outer=10, n_inner=25,
+                n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
                 add_training_data=False,
                 log_ii=1,
@@ -142,7 +145,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",
-                n_outer=10, n_inner=25,
+                n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
                 add_training_data=False,
                 log_ii=1,
@@ -271,7 +274,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 target_mel = util.librosa_melspec(target_audio,sampling_rate)
                 target_mel = util.normalize_mel_librosa(target_mel)
                 
-                semantic_vector = embedder(util.mel_to_tensor(target_mel), (torch.tensor(target_mel.shape[0]),))[-1, :].detach().cpu().numpy().copy()
+                semantic_vector = EMBEDDER(util.mel_to_tensor(target_mel), (torch.tensor(target_mel.shape[0]),))[-1, :].detach().cpu().numpy().copy()
                 semantic_vector = np.asarray([semantic_vector])
                 dist = euclidean_distances(semantic_vector, LABEL_VECTORS_NP)[0]
                 label = LABEL_VECTORS.label.iloc[np.argsort(dist)[0]]

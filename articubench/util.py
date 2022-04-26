@@ -32,6 +32,11 @@ failure = VTL.vtlInitialize(speaker_file_name)
 if failure != 0:
     raise ValueError('Error in vtlInitialize! Errorcode: %i' % failure)
 del PREFIX, SUFFIX, speaker_file_name, failure
+# get version / compile date
+VERSION = ctypes.c_char_p(b' ' * 64)
+VTL.vtlGetVersion(VERSION)
+print('Version of the VocalTractLab library: "%s"' % VERSION.value.decode())
+del VERSION
 
 
 # This should be done on all cp_deltas

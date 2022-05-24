@@ -424,6 +424,11 @@ def pad_same_to_even_seq_length(array):
     else:
         return array
 
+def half_seq_by_average_pooling(seq):
+    if len(seq) % 2:
+        seq = pad_same_to_even_seq_length(seq)
+    half_seq = (seq[::2,:] + seq[1::2,:])/2
+    return half_seq
 
 def export_svgs(cps, path='svgs/', hop_length=5):
     """
@@ -770,3 +775,23 @@ def calculate_roll_pitch_yaw(rotation_matrix):
 
     return rxyz_deg
 
+
+
+
+def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15, 16], calculate="raw"):
+    length = np.cumsum(tube_length,axis=1)
+    section_per_time = []
+    for t, l in enumerate(length):
+        section = []
+        for i,step in enumerate(steps[:-1]):
+            area = tube_area[t,np.where(np.logical_and(l>=step, l<=steps[i+1]))]
+            if calculate == "raw":
+                section += [area]
+            elif calculate == "mean":
+                section += [np.mean(area)]
+            elif calculate == "binary":
+                section += [bool(np.sum(area <= 0.001))]
+            else:
+                raise Exception(f"calculate must be one of ['raw', 'mean', 'binary']")
+        section_per_time += [section]
+    return section_per_time

@@ -108,6 +108,17 @@ First ideas about the articubench benchmark were presented at the ESSV2022:
 
   https://www.essv.de/paper.php?id=1140
 
+  @INPROCEEDINGS{ESSV2022_1140,
+  TITLE = {Articubench - An articulatory speech synthesis benchmark},
+  AUTHOR = {Konstantin Sering and Paul Schmidt-Barbo},
+  YEAR = {2022},
+  PAGES = {43--50},
+  KEYWORDS = {Articulatory Synthesis},
+  BOOKTITLE = {Studientexte zur Sprachkommunikation: Elektronische Sprachsignalverarbeitung 2022},
+  EDITOR = {Oliver Niebuhr and Malin Svensson Lundmark and Heather Weston},
+  PUBLISHER = {TUDpress, Dresden},
+  ISBN = {978-3-95908-548-9}
+  }
 
 .. Types of data
 .. -------------

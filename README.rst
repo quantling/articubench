@@ -1,6 +1,9 @@
 articubench
 ===========
 
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.7252253.svg
+   :target: https://zenodo.org/record/7252253
+
 A benchmark to evaluate articulatory speech synthesis systems. This benchmark
 uses the VocalTractLab [1] as its articulatory speech synthesis simulator.
 

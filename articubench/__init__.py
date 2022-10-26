@@ -28,7 +28,7 @@ from pip._vendor import pkg_resources
 
 __author__ = 'Konstantin Sering, Paul Schmidt-Barbo'
 __author_email__ = 'konstantin.sering@uni-tuebingen.de'
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 __license__ = 'GPLv3+'
 __description__ = ('articubench - An Articulatory Speech Synthesis Benchmark')
 __classifiers__ = [

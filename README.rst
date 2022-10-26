@@ -6,10 +6,9 @@ uses the VocalTractLab [1] as its articulatory speech synthesis simulator.
 
 .. warning::
 
-   This package is not released yet and will be released in March 2022
-   alongside the ESSV 2022 conference. The coding will be finished before end
-   of April 2022, but get in touch with @derNarr or @paulovic96 if you are
-   interested in the benchmark.
+   This package is not complete yet and will be hopefully released in March
+   2023 alongside the ESSV 2023.  If you are interested in the current status
+   get in touch with @derNarr or @paulovic96.
 
 
 Installation
@@ -49,8 +48,7 @@ Energy used for Training [kWh]  393    1.9      0.0 (7.6 + MFA)  0.0
 
 Benchmark Results
 -----------------
-Results will be published when they are available hopefully before end of April
-2022.
+Results will be published when they are available.
 
 ===================  =====  =======  ===============  ==============
 Tiny                 PAULE  Inverse  Seg-Model*       Baseline-Model
@@ -106,7 +104,9 @@ spectrogram RMSE
 Literature
 ----------
 
-TODO add links to ESSV2022 pdf.
+First ideas about the articubench benchmark were presented at the ESSV2022:
+
+  https://www.essv.de/paper.php?id=1140
 
 
 .. Types of data

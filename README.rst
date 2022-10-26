@@ -108,6 +108,8 @@ First ideas about the articubench benchmark were presented at the ESSV2022:
 
   https://www.essv.de/paper.php?id=1140
 
+::
+
   @INPROCEEDINGS{ESSV2022_1140,
   TITLE = {Articubench - An articulatory speech synthesis benchmark},
   AUTHOR = {Konstantin Sering and Paul Schmidt-Barbo},

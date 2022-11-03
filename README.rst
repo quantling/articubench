@@ -190,6 +190,10 @@ License
 -------
 * VTL is GPLv3.0+ license
 
+Acknowledgements
+----------------
+This research was supported by an ERC advanced Grant (no. 742545) and the University of Tübingen.
+
 Links
 -----
 

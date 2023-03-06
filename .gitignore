@@ -1,7 +1,8 @@
 articubench.egg-info/
 dist/
-doc/build/
+docs/build/
 build/
 __pycache__/
-doc/figure/articubench_overview.aux
-doc/figure/articubench_overview.log
+docs/figure/articubench_overview.aux
+docs/figure/articubench_overview.log
+poetry.lock

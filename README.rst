@@ -25,7 +25,7 @@ Installation
 Overview
 --------
 
-.. image:: https://raw.githubusercontent.com/quantling/articubench/main/doc/figure/articubench_overview.png
+.. image:: https://raw.githubusercontent.com/quantling/articubench/main/docs/figure/articubench_overview.png
   :width: 800
   :alt: Box and arrow overview of the data flow and tasks of the articubench benchmark.
 

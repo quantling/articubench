@@ -26,14 +26,13 @@ Workflow
 1. Fork this repository on Github. From here on we assume you successfully
    forked this repository to https://github.com/yourname/articubench.git
 
-2. Get a local copy of your fork and install the package in 'development'
-   mode, which will make changes in the source code active immediately, by running
+2. Install all dependencies with poetry (https://python-poetry.org/)
 
    .. code:: bash
 
        git clone https://github.com/yourname/articubench.git
        cd articubench
-       python setup.py develop --user
+       poetry install
 
 3. Add code, tests or documentation.
 
@@ -41,8 +40,8 @@ Workflow
 
    .. code:: bash
 
-       make checkstyle
-       make test
+        poetry run pytest
+        poetry run pylint articubench
 
 5. Add and commit your changes after tests run through without complaints.
 
@@ -65,36 +64,21 @@ Workflow
    click "New pull request" to submit your Pull Request to
    https://github.com/quantling/articubench.
 
-.. note::
-
-    If you want to develop *articubench* you should have installed:
-
-    .. code:: bash
-
-        pip install --user tox pylint pytest pycodestyle sphinx
-
 
 Running tests
 -------------
-
-We use ``make`` and ``tox`` to manage testing. You can run the tests by
+We use ``poetry`` to manage testing. You can run the tests by
 executing the following within the repository's root folder (``articubench/``):
 
 .. code:: bash
 
-    make test
+    poetry run pytest
 
 For manually checking coding guidelines run:
 
 .. code:: bash
 
-    make checkstyle
-
-There is an additional way to invoke ``pylint`` as a linter with tox by running
-
-.. code:: bash
-
-    tox -e lint
+    poetry run pylint articubench
 
 The linting gives still a lot of complaints that need some decisions on how to
 fix them appropriately.
@@ -102,66 +86,47 @@ fix them appropriately.
 
 Building documentation
 ----------------------
+Building the documentation requires some extra dependencies. Usually, these are
+installed when installing the dependencies with poetry. Some services like Readthedocs,
+however, require the documentation dependencies extra. For that reason, they can
+also be found in `docs/requirements.txt`. For normal usage, installing all dependencies
+with poetry is sufficient.
 
-Building the documentation requires some extra dependencies. Therefore, run
+The projects documentation is stored in the ``articubench/docs/`` folder
+and is created with ``sphinx``. However, it is not necessary to build the documentation
+from there.
 
-.. code:: bash
-
-    pip install -e .[docs]
-
-in the project root directory. This command will install all required
-dependencies. The projects documentation is stored in the ``articubench/doc/`` folder
-and is created with ``sphinx``. You can rebuild the documentation by either
-executing
-
-.. code:: bash
-
-   make documentation
-
-in the repository's root folder (``articubench``) or by executing
+You can rebuild the documentation by either executing
 
 .. code:: bash
 
-   make html
+    poetry run sphinx-build -b html docs/source docs/build/html
 
-in the documentation folder (``articubench/doc/``).
+in the repository's root folder (``articubench/``).
 
 
 Continuous Integration
 ----------------------
-
-We use several services in order to continuously monitor our project:
-
-===========  ===========  =================  ===========================
-Service      Status       Config file        Description
-===========  ===========  =================  ===========================
-Travis CI    |travis|     `.travis.yml`_     Automated testing
-Coveralls    |coveralls|                     Monitoring of test coverage
-===========  ===========  =================  ===========================
-
-.. |travis| image:: https://travis-ci.com/quantling/articubench.svg?branch=main
-    :target: https://travis-ci.com/quantling/articubench?branch=main
-
-.. |coveralls| image:: https://coveralls.io/repos/github/quantling/articubench/badge.svg?branch=main
-    :target: https://coveralls.io/github/quantling/articubench?branch=main
-
-.. _.travis.yml: https://github.com/quantling/articubench/blob/main/.travis.yml
+TODO: see pyndl documentation for reference.
 
 
 Licensing
 ---------
-
 All contributions to this project are licensed under the `GPLv3+ license
-<https://github.com/quantling/articubench/blob/main/LICENSE.txt>`_. Exceptions are
-explicitly marked.
-All contributions will be made available under GPLv3+ license if no explicit
-request for another license is made and agreed on.
+<https://github.com/quantling/articubench/blob/main/LICENSE.txt>`_. Exceptions
+are explicitly marked.  All contributions will be made available under GPLv3+
+license if no explicit request for another license is made and agreed on.
 
 
 Release Process
 ---------------
-1. Ensure, that the version of the branch to be mered, is adequately increased
-   see Versioning_ below.
+1. Update the version accordingly to Versioning_ below. This can be easily done
+   by poetry running
+
+   .. code:: bash
+
+       poetry version major|minor|patch|...
+
 
 2. Merge Pull Requests with new features or bugfixes into *articubench*'s' ``main``
    branch.
@@ -169,31 +134,19 @@ Release Process
 3. Create a new release on Github of the `main` branch of the form ``vX.Y.Z``
    (where ``X``, ``Y``, and ``Z`` refer to the new version).  Add a description
    of the new feature or bugfix. For details on the version number see
-   Versioning_ below.
+   Versioning_ below. This will trigger a Action to automatically build and
+   upload the release to PyPI
 
-4. Pull the repository and checkout the tag and create the distribution files
-   using:
+4. Check if the new version is on pypi (https://pypi.python.org/pypi/articubench/).
 
-.. code:: bash
+5. Manuel publishing works the following (maintainer only):
 
-    git pull
-    git checkout vX.Y.Z
-    python setup.py build  # to compile *.pyx -> *.c
-    python setup.py sdist
+   .. code:: bash
 
-5. Create GPG signatures of the distribution files using:
-
-.. code:: bash
-
-    gpg --detach-sign -a dist/articubench-X.Y.Z.tar.gz
-
-6. (maintainers only) Upload the distribution files to PyPI using twine.
-
-.. code:: bash
-
-    twine upload -s dist/*
-
-7. (maintainers only) Check if the new version is on pypi (https://pypi.python.org/pypi/articubench/).
+      git pull
+      git checkout vX.Y.Z
+      poetry build
+      poetry publish
 
 
 Versioning

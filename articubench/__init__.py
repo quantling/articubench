@@ -47,7 +47,6 @@ __classifiers__ = [
     'Topic :: Scientific/Engineering :: Information Analysis',
     ]
 
-
 def sysinfo():
     """
     Prints system the dependency information

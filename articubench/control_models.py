@@ -115,7 +115,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
-                add_training_data=False,
+                # add_training_data=False,
                 log_ii=1,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -247,9 +247,9 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         subprocess.run(command.split())
     del output
 
-    with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
-    #if True:
-        #path = DIR
+    # with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
+    if True:
+        path = DIR
 
         if verbose:
             print(f"Temporary folder for segment based approach is: {path}")
@@ -292,8 +292,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 f.write(label)
 
             # align input
-            command = ('conda run -n aligner mfa g2p german_mfa '.split()
-                    + [os.path.join(path, "temp_input"), os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
+            command = ('conda run -n aligner mfa g2p'.split()
+                    + [os.path.join(path, "temp_input"), "german_mfa", os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
             subprocess.run(command, capture_output=~verbose)
             command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output")]
             subprocess.run(command, capture_output=~verbose)
@@ -306,11 +306,11 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
             subprocess.run(command, capture_output=~verbose)
 
             # extract sampa phones
-            tg = textgrid.openTextgrid(os.path.join(path, "temp_output/temp_input_pretrained_aligner/pretrained_aligner/textgrids/target_audio.TextGrid"), False)
-            word = tg.tierDict['words'].entryList[0]
+            tg = textgrid.openTextgrid(os.path.join(path, "temp_output/target_audio.TextGrid"), False)
+            word = tg.getTier("words").entries[0]
             phones = list()
             phone_durations = list()
-            for phone in tg.tierDict['phones'].entryList:
+            for phone in tg.getTier("phones").entries:
                 if phone.start >= word.end:
                     break
                 if phone.start < word.start:

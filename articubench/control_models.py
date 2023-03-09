@@ -40,10 +40,13 @@ import pandas as pd
 import torch
 import soundfile as sf
 from paule import paule
+from paule import util as paule_util
 
 from .embedding_models import  MelEmbeddingModel
 from . import util
 
+
+paule_util.download_pretrained_weights()
 
 DEVICE = torch.device('cpu')  #torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DIR = os.path.dirname(__file__)

@@ -19,7 +19,7 @@ def test_segment():
         pickle.dump((results), pfile)
 
 
-def test_fast():
+def test_paule_fast():
     # tool slow
     pass
     # results = score(synth_paule_fast, tasks='all', subscores='all', return_individual_subscores=True)

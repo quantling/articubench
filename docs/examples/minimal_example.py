@@ -9,7 +9,8 @@ results_baseline = score(synth_baseline_schwa, tasks='all', subscores='all', ret
 results_segment = score(synth_baseline_segment, tasks='all', subscores='all', return_individual_subscores=True)
 
 
-#results = score(synth_paule_fast)
+results = score(synth_paule_fast, tasks='all', subscores='all', return_individual_subscores=True)
+
 #results = score(synth_paule_fast, tasks=('copy-synthesis',), subscores=('acoustic',))
 #results_paule_full = score(synth_paule_acoustic_semvec, tasks=['copy-synthesis',], subscores='all', return_individual_subscores=True)
 #results_paule = score(synth_paule_fast, tasks=['copy-synthesis',], subscores='all', return_individual_subscores=True)

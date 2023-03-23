@@ -223,6 +223,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         Please install mfa into a conda environment named 'aligner', e. g. with::
 
             conda create -n aligner -c conda-forge montreal-forced-aligner
+            conda run -n aligner mfa server init
+            conda run -n aligner mfa server stop
 
         Test if the installation was successful with 'conda run -n aligner mfa version'.
 
@@ -244,8 +246,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         subprocess.run(command.split())
     del output
 
-    # with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
-    if True:
+    with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
+    # if True:
         path = DIR
 
         if verbose:
@@ -260,7 +262,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         elif target_audio is None:
             # get label, phones and mean phone durations (based on CommonVoice)
             try:
-                label,phones, phone_durations = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)][["label","phones" ,"phone_durations"]].iloc[0]
+                label, phones, phone_durations = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)][["label","phones" ,"phone_durations"]].iloc[0]
             except IndexError as e:
                 raise ValueError("Unknown Semantic Vector.") from None
             if not os.path.exists(os.path.join(path, "temp_output")):
@@ -289,10 +291,15 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 f.write(label)
 
             # align input
+            command = 'conda run -n aligner mfa server start'.split()
+            print(' '.join(command))
+            subprocess.run(command, capture_output=~verbose)
             command = ('conda run -n aligner mfa g2p'.split()
                     + [os.path.join(path, "temp_input"), "german_mfa", os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
+            print(' '.join(command))
             subprocess.run(command, capture_output=~verbose)
             command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output")]
+            print(' '.join(command))
             subprocess.run(command, capture_output=~verbose)
             command = ('conda run -n aligner mfa align'.split()
                     + [os.path.join(path,"temp_input"),
@@ -300,6 +307,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                        'german_mfa',
                        os.path.join(path,"temp_output"),
                        '--clean'])
+            print(' '.join(command))
             subprocess.run(command, capture_output=~verbose)
 
             # extract sampa phones

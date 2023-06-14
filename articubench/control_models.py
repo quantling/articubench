@@ -157,6 +157,59 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
     assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
 
+# I copy pasted this
+def synth_paule_not_fast(seq_length, *, target_semantic_vector=None,
+        target_audio=None, sampling_rate=None):
+    if target_semantic_vector is None and target_audio is None:
+        raise ValueError("You have to either give target_semantic_vector or "
+                "target_audio and sampling_rate or both targets.")
+    elif target_semantic_vector is None:
+        results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
+                learning_rate_learning=0.001,
+                target_acoustic=(target_audio, sampling_rate),
+                initialize_from="acoustic",
+                objective="acoustic_semvec",
+                n_outer=10, n_inner=24,
+                continue_learning=False,
+                log_ii=5,
+                log_semantics=False,
+                n_batches=3, batch_size=8, n_epochs=10,
+                log_gradients=False,
+                plot=False, seed=None, verbose=False)
+    elif target_audio is None:
+        results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
+                learning_rate_learning=0.001,
+                target_semvec=target_semantic_vector,
+                target_seq_length=int(seq_length // 2),
+                target_acoustic=None,
+                initialize_from="semvec",
+                objective="acoustic_semvec",
+                n_outer=10, n_inner=24,
+                continue_learning=False,
+                log_ii=5,
+                log_semantics=False,
+                n_batches=3, batch_size=8, n_epochs=10,
+                log_gradients=False,
+                plot=False, seed=None, verbose=False)
+    else:  # both
+        results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
+                learning_rate_learning=0.001,
+                target_semvec=target_semantic_vector,
+                target_seq_length= int(seq_length // 2),
+                target_acoustic=(target_audio, sampling_rate),
+                initialize_from="semvec",
+                objective="acoustic_semvec",
+                n_outer=10, n_inner=24,
+                continue_learning=True,
+                log_ii=5,
+                log_semantics=False,
+                n_batches=3, batch_size=8, n_epochs=10,
+                log_gradients=False,
+                plot=False, seed=None, verbose=False)
+    cps = results.planned_cp.copy()
+    print(cps.shape[0], "\n", seq_length)
+    assert cps.shape[0] == seq_length
+    return util.inv_normalize_cp(cps)
 
 def synth_paule_fast(seq_length, *, target_semantic_vector=None,
         target_audio=None, sampling_rate=None):
@@ -195,7 +248,7 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length=int(seq_length // 2),
+                target_seq_length= int(seq_length // 2),
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -207,6 +260,7 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
+    print(cps.shape[0], "\n", seq_length)
     assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
 
@@ -281,7 +335,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
             else:
                 # get label
                 try:
-                    label = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)].label.iloc[0]
+                    # label = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)].label.iloc[0]
+                    label = "fakeja"
                 except IndexError as e:
                     raise ValueError("Unknown Semantic Vector.") from None
 

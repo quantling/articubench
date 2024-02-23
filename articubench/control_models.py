@@ -248,7 +248,7 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
         results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
                 learning_rate_learning=0.001,
                 target_semvec=target_semantic_vector,
-                target_seq_length= int(seq_length // 2),
+                target_seq_length=int(seq_length // 2),
                 target_acoustic=(target_audio, sampling_rate),
                 initialize_from="semvec",
                 objective="acoustic_semvec",
@@ -302,7 +302,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
 
     with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
     # if True:
-        path = DIR
+        #path = DIR
 
         if verbose:
             print(f"Temporary folder for segment based approach is: {path}")

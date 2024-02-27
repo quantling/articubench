@@ -118,6 +118,8 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
+                add_training_data_pred=False,
+                add_training_data_inv=False,
                 log_ii=1,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -133,6 +135,8 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
+                add_training_data_pred=False,
+                add_training_data_inv=False,
                 log_ii=1,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -148,6 +152,8 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=OUTER, n_inner=INNER,
                 continue_learning=True,
+                add_training_data_pred=False,
+                add_training_data_inv=False,
                 log_ii=1,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -224,6 +230,8 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=1, n_inner=5,
                 continue_learning=False,
+                add_training_data_pred=False,
+                add_training_data_inv=False,
                 log_ii=5,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -239,6 +247,8 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=1, n_inner=5,
                 continue_learning=False,
+                add_training_data_pred=False,
+                add_training_data_inv=False,
                 log_ii=5,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -254,6 +264,8 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
                 objective="acoustic_semvec",
                 n_outer=1, n_inner=5,
                 continue_learning=True,
+                add_training_data_pred=False,
+                add_training_data_inv=False,
                 log_ii=5,
                 log_semantics=False,
                 n_batches=3, batch_size=8, n_epochs=10,
@@ -276,13 +288,18 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
 
         Please install mfa into a conda environment named 'aligner', e. g. with::
 
-            conda create -n aligner -c conda-forge montreal-forced-aligner
+            conda create -n aligner -c conda-forge montreal-forced-aligner=2.2.17 openfst=1.8.2 kaldi=5.5.1068
             conda run -n aligner mfa server init
             conda run -n aligner mfa server stop
 
         Test if the installation was successful with 'conda run -n aligner mfa version'.
 
         https://montreal-forced-aligner.readthedocs.io/en/latest/installation.html
+
+        To remove the environment with the aligner run::
+
+            conda env remove -n aligner
+
         """)
 
     # download mfa data if not already downlaoded
@@ -301,8 +318,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
     del output
 
     with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
-    # if True:
-        #path = DIR
+    #if True:
+    #    path = DIR
 
         if verbose:
             print(f"Temporary folder for segment based approach is: {path}")

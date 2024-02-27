@@ -231,11 +231,16 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
 
         Please install mfa into a conda environment named 'aligner', e. g. with::
 
-            conda create -n aligner -c conda-forge montreal-forced-aligner
+            conda create -n aligner -c conda-forge montreal-forced-aligner=2.2.17 openfst=1.8.2 kaldi=5.5.1068
 
         Test if the installation was successful with 'conda run -n aligner mfa version'.
 
         https://montreal-forced-aligner.readthedocs.io/en/latest/installation.html
+
+        To remove the environment with the aligner run::
+
+            conda env remove -n aligner
+
         """)
 
     # download mfa data if not already downlaoded
@@ -255,7 +260,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
 
     with tempfile.TemporaryDirectory(prefix='python_articubench_segment_model_') as path:
     #if True:
-        #path = DIR
+    #    path = DIR
 
         if verbose:
             print(f"Temporary folder for segment based approach is: {path}")
@@ -298,8 +303,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 f.write(label)
 
             # align input
-            command = ('conda run -n aligner mfa g2p german_mfa '.split()
-                    + [os.path.join(path, "temp_input"), os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
+            command = ('conda run -n aligner mfa g2p'.split()
+                    + [os.path.join(path, "temp_input"), 'german_mfa',  os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
             subprocess.run(command, capture_output=~verbose)
             command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output")]
             subprocess.run(command, capture_output=~verbose)
@@ -312,11 +317,11 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
             subprocess.run(command, capture_output=~verbose)
 
             # extract sampa phones
-            tg = textgrid.openTextgrid(os.path.join(path, "temp_output/temp_input_pretrained_aligner/pretrained_aligner/textgrids/target_audio.TextGrid"), False)
-            word = tg.tierDict['words'].entryList[0]
+            tg = textgrid.openTextgrid(os.path.join(path, "temp_output/target_audio.TextGrid"), False)
+            word = tg.getTier('words').entries[0]
             phones = list()
             phone_durations = list()
-            for phone in tg.tierDict['phones'].entryList:
+            for phone in tg.getTier('phones').entries:
                 if phone.start >= word.end:
                     break
                 if phone.start < word.start:

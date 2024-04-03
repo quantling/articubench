@@ -48,7 +48,7 @@ from . import util
 
 paule_util.download_pretrained_weights()
 
-DEVICE = torch.device('cpu')  #torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DIR = os.path.dirname(__file__)
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
@@ -305,13 +305,13 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
     # download mfa data if not already downlaoded
     command = 'conda run -n aligner mfa model list g2p'
     output = subprocess.run(command.split(), capture_output=True, text=True).stdout
-    if not 'german_mfa' in output:
+    if 'german_mfa' not in output:
         print("Dowloading g2p model...")
         command = 'conda run -n aligner mfa model download g2p german_mfa'
         subprocess.run(command.split())
     command = 'conda run -n aligner mfa model list acoustic'
     output = subprocess.run(command.split(), capture_output=True, text=True).stdout
-    if not 'german_mfa' in output:
+    if 'german_mfa' not in output:
         print("Dowloading acoustic model...")
         command = 'conda run -n aligner mfa model download acoustic german_mfa'
         subprocess.run(command.split())
@@ -352,8 +352,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
             else:
                 # get label
                 try:
-                    # label = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)].label.iloc[0]
-                    label = "fakeja"
+                    label = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)].label.iloc[0]
+                    
                 except IndexError as e:
                     raise ValueError("Unknown Semantic Vector.") from None
 

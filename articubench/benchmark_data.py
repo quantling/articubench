@@ -47,7 +47,10 @@ import pandas as pd
 import numpy as np
 
 from .eval_tongue_height import tongue_height_from_cps
+from .util import cps_to_ema
 
+EMAS = ['TONGUE_115-x[cm]', 'TONGUE_115-y[cm]', 'TONGUE_115-z[cm]','TONGUE_225-x[cm]', 'TONGUE_225-y[cm]', 'TONGUE_225-z[cm]', 'TONGUE_335-x[cm]', 'TONGUE_335-y[cm]', 'TONGUE_335-z[cm]']
+ 
 
 DIR = os.path.dirname(__file__)
 
@@ -55,17 +58,18 @@ DIR = os.path.dirname(__file__)
 def load_tiny():
     data = pd.read_pickle(os.path.join(DIR, 'data/tiny.pkl'))
 
-    if not 'reference_cp' in data.columns:
+    if 'reference_cp' not in data.columns:
         data['reference_cp'] = None
-    if not 'reference_tongue_height' in data.columns:
+    if 'reference_tongue_height' not in data.columns:
         data['reference_tongue_height'] = None
-    if not 'reference_ema' in data.columns:
+    if 'reference_ema' not in data.columns:
         data['reference_ema'] = None
 
     # recompute len_cp
     data['len_cp'] = data.apply(lambda row: int(2 * math.ceil(44100 / 220 * len(row['target_sig']) / row['target_sr'])), axis=1)
     tongue_heights = data.reference_cp.apply(lambda cp: tongue_height_from_cps(cp) if cp is not None else None)
-    # only set newly simulated tongue heights and leave all other tongue heights as is
+    emas = data.reference_cp.apply(lambda cp: cps_to_ema(cp)[EMAS].to_numpy() if cp is not None else None)
+    data['reference_ema'][~emas.isna()] = emas[~emas.isna()]
     data['reference_tongue_height'][~tongue_heights.isna()] = tongue_heights[~tongue_heights.isna()]
     return data
 

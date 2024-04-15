@@ -12,7 +12,7 @@ from tqdm import tqdm
 import torch
 from sklearn.metrics.pairwise import euclidean_distances
 
-from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor
+from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor, cps_to_ema
 from .eval_tongue_height import tongue_height_from_cps
 from .embedding_models import MelEmbeddingModel
 from .control_models import synth_baseline_schwa
@@ -53,9 +53,13 @@ LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
 
 BASELINE_TONGUE_HEIGHT = None
+BASELINE_EMA = None
 BASELINE_SPECTROGRAM = None
 BASELINE_LOUDNESS = None
 BASELINE_SEMDIST = None
+
+
+EMAS = ['TONGUE_115-x[cm]', 'TONGUE_115-y[cm]', 'TONGUE_115-z[cm]','TONGUE_225-x[cm]', 'TONGUE_225-y[cm]', 'TONGUE_225-z[cm]', 'TONGUE_335-x[cm]', 'TONGUE_335-y[cm]', 'TONGUE_335-z[cm]']
 
 def _no_data_in_column(column, data):
     return ((column not in data.columns)
@@ -180,6 +184,19 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                 # TODO: only calculate tongue height where ultra sound data is available for comparison TODO
                 data['tongue_height_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_height_from_cps(cps))
 
+    # calculate EMA 
+    print("calculating EMAs")
+    if subscores == 'all' or 'articulatory' in subscores:
+
+        if ('ema_baseline' not in data.columns) or (data['ema_baseline'].isnull().any()) or (not len(data.index)):
+                data['ema_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS].to_numpy())
+        global BASELINE_EMA
+        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_baseline'], row['reference_ema']), axis=1))
+
+        for task in tasks:
+            if (f'ema_{task}' not in data.columns) or (data[f'ema_{task}'].isnull().any()) or (not len(data.index)):
+                data[f'ema_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS].to_numpy())
+        
 
     # calculate log-mel spectrograms
     print("calculate log-mel spectrogram")
@@ -331,8 +348,7 @@ def score_tongue_height(data, task):
 
 
 def score_ema(data, task):
-    s_ema = np.NaN
-    # TODO
+    s_ema = 100 * (1- np.mean(data.progress_apply(lambda row: RMSE(row[f'ema_{task}'], row['reference_ema']), axis=1)) /BASELINE_EMA)
     return s_ema
 
 

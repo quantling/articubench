@@ -60,7 +60,7 @@ BASELINE_SEMDIST = None
 
 
 EMAS_TB = ['TONGUE_225-x[cm]', 'TONGUE_225-y[cm]', 'TONGUE_225-z[cm]']
-EMAS_TT = ['TONGUE_335-x[cm]', 'TONGUE_335-y[cm]', 'TONGUE_335-z[cm]']
+EMAS_TT = ['TONGUE_115-x[cm]', 'TONGUE_115-y[cm]', 'TONGUE_115-z[cm]']
 
 def _no_data_in_column(column, data):
     return ((column not in data.columns)
@@ -102,6 +102,8 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         tasks = ('copy-synthesis', 'semantic-acoustic', 'semantic-only')
     if subscores == 'all':
         subscores = ('acoustic', 'articulatory', 'semantic')
+
+    assert any([task in ('copy-synthesis', 'semantic-acoustic', 'semantic-only') for task in tasks]), "tasks has to be one of 'copy-synthesis', 'semantic-acoustic', 'semantic-only'"
 
     # load data
     print("load data")
@@ -150,19 +152,12 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                                       target_semantic_vector=row['target_semantic_vector']),
                     axis=1)
 
-    # synthesise cps
-    print("synthesise cps")
-    if 'copy-synthesis' in tasks:
-        if _no_data_in_column('sig_copy-synthesis', data):
-            data['sig_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
+    # synthesize cps
+    print("synthesize cps")
+    for task in tasks:
+        if _no_data_in_column(f'sig_{task}', data):
+            data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
 
-    if 'semantic-acoustic' in tasks:
-        if _no_data_in_column('sig_semantic-acoustic', data):
-            data['sig_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: speak(cps)[0])
-
-    if 'semantic-only' in tasks:
-        if _no_data_in_column('sig_semantic-only', data):
-            data['sig_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: speak(cps)[0])
 
     # calculate tongue heights
     print("calculate tongue height")
@@ -172,18 +167,11 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         global BASELINE_TONGUE_HEIGHT
         BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_height_baseline'], row['reference_tongue_height']),axis=1))
 
-        if 'copy-synthesis' in tasks:
-            if _no_data_in_column('tongue_height_copy-synthesis', data):
-                data['tongue_height_copy-synthesis'] = data['cps_copy-synthesis'].progress_apply(lambda cps: tongue_height_from_cps(cps))
-
-        if 'semantic-acoustic' in tasks:
-            if _no_data_in_column('tongue_height_semantic-acoustic', data):
-                data['tongue_height_semantic-acoustic'] = data['cps_semantic-acoustic'].progress_apply(lambda cps: tongue_height_from_cps(cps))
-
-        if 'semantic-only' in tasks:
-            if _no_data_in_column('tongue_height_semantic-only', data):
+        for task in tasks:
+            if _no_data_in_column(f'tongue_height_{task}', data):
+                data[f'tongue_height_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: tongue_height_from_cps(cps))
                 # TODO: only calculate tongue height where ultra sound data is available for comparison TODO
-                data['tongue_height_semantic-only'] = data['cps_semantic-only'].progress_apply(lambda cps: tongue_height_from_cps(cps))
+
 
     # calculate EMA 
     print("calculating EMAs")
@@ -215,23 +203,12 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         if _no_data_in_column('loudness_baseline', data):
                 data['loudness_baseline'] = data['log_mel_baseline'].progress_apply(lambda x: np.mean(x, axis=1))
 
-        if 'copy-synthesis' in tasks:
-            if _no_data_in_column('log_mel_copy-synthesis', data):
-                data['log_mel_copy-synthesis'] = data['sig_copy-synthesis'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
-            if _no_data_in_column('loudness_copy-synthesis', data):
-                data['loudness_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda x: np.mean(x, axis=1))
+        for task in tasks:
+            if _no_data_in_column(f'log_mel_{task}', data):
+                data[f'log_mel_{task}'] = data[f'sig_{task}'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
+            if _no_data_in_column(f'loudness_{task}', data):
+                data[f'loudness_{task}'] = data[f'log_mel_{task}'].progress_apply(lambda x: np.mean(x, axis=1))
 
-        if 'semantic-acoustic' in tasks:
-            if _no_data_in_column('log_mel_semantic-acoustic', data):
-                data['log_mel_semantic-acoustic'] = data['sig_semantic-acoustic'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
-            if _no_data_in_column('loudness_semantic-acoustic', data):
-                data['loudness_semantic-acoustic'] = data['log_mel_semantic-acoustic'].progress_apply(lambda x: np.mean(x, axis=1))
-
-        if 'semantic-only' in tasks:
-            if _no_data_in_column('log_mel_semantic-only', data):
-                data['log_mel_semantic-only'] = data['sig_semantic-only'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
-            if _no_data_in_column('loudness_semantic-only', data):
-                data['loudness_semantic-only'] = data['log_mel_semantic-only'].progress_apply(lambda x: np.mean(x, axis=1))
 
         if _no_data_in_column('target_log_mel', data):
             data['target_log_mel'] = data.progress_apply(lambda row: normalize_mel_librosa(librosa_melspec(row['target_sig'],row['target_sr'])),axis=1)
@@ -262,24 +239,11 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             global BASELINE_SEMDIST
             BASELINE_SEMDIST = np.mean(data.progress_apply(lambda row: RMSE(row['semantic_vector_baseline'], row['target_semantic_vector']),axis=1))
 
-            if 'copy-synthesis' in tasks:
-                if _no_data_in_column('semantic_vector_copy-synthesis', data):
-                    data['semantic_vector_copy-synthesis'] = data['log_mel_copy-synthesis'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
-                if _no_data_in_column('semantic_rank_copy-synthesis', data):
-                    data['semantic_rank_copy-synthesis'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_copy-synthesis'], row['label']),axis=1)
-
-            if 'semantic-acoustic' in tasks:
-                if _no_data_in_column('semantic_vector_semantic-acoustic', data):
-                    data['semantic_vector_semantic-acoustic'] = data['log_mel_semantic-acoustic'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
-                if _no_data_in_column('semantic_rank_semantic-acoustic', data):
-                    data['semantic_rank_semantic-acoustic'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_semantic-acoustic'], row['label']),axis=1)
-
-
-            if 'semantic-only' in tasks:
-                if _no_data_in_column('semantic_vector_semantic-only', data):
-                    data['semantic_vector_semantic-only'] = data['log_mel_semantic-only'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
-                if _no_data_in_column('semantic_rank_semantic-only', data):
-                    data['semantic_rank_semantic-only'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_semantic-only'], row['label']),axis=1)
+            for task in tasks:
+                if _no_data_in_column(f'semantic_vector_{task}', data):
+                    data[f'semantic_vector_{task}'] = data[f'log_mel_{task}'].progress_apply(lambda mel: embedder(mel_to_tensor(mel),(torch.tensor(mel.shape[0]),))[-1, :].detach().cpu().numpy().copy())
+                if _no_data_in_column(f'semantic_rank_{task}', data):
+                    data[f'semantic_rank_{task}'] = data.progress_apply(lambda row: sem_rank(row[f'semantic_vector_{task}'], row['label']),axis=1)
 
 
     # ????

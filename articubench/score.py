@@ -59,7 +59,8 @@ BASELINE_LOUDNESS = None
 BASELINE_SEMDIST = None
 
 
-EMAS = ['TONGUE_115-x[cm]', 'TONGUE_115-y[cm]', 'TONGUE_115-z[cm]','TONGUE_225-x[cm]', 'TONGUE_225-y[cm]', 'TONGUE_225-z[cm]', 'TONGUE_335-x[cm]', 'TONGUE_335-y[cm]', 'TONGUE_335-z[cm]']
+EMAS_TB = ['TONGUE_225-x[cm]', 'TONGUE_225-y[cm]', 'TONGUE_225-z[cm]']
+EMAS_TT = ['TONGUE_335-x[cm]', 'TONGUE_335-y[cm]', 'TONGUE_335-z[cm]']
 
 def _no_data_in_column(column, data):
     return ((column not in data.columns)
@@ -188,16 +189,24 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     print("calculating EMAs")
     if subscores == 'all' or 'articulatory' in subscores:
 
-        if ('ema_baseline' not in data.columns) or (data['ema_baseline'].isnull().any()) or (not len(data.index)):
-                data['ema_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS].to_numpy())
+        if ('ema_TT_baseline' not in data.columns) or (data['ema_TT_baseline'].isnull().any()) or (not len(data.index)):
+                data['ema_TT_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TT].to_numpy())
+        if ('ema_TB_baseline' not in data.columns) or (data['ema_TB_baseline'].isnull().any()) or (not len(data.index)):
+                data['ema_TB_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TB].to_numpy())
+
         global BASELINE_EMA
-        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_baseline'], row['reference_ema']), axis=1))
+        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_TT_baseline'], row['reference_ema_TT']), axis=1)
+                        + data.progress_apply(lambda row: RMSE(row['ema_TB_baseline'], row['reference_ema_TB']), axis=1))
 
         for task in tasks:
-            if (f'ema_{task}' not in data.columns) or (data[f'ema_{task}'].isnull().any()) or (not len(data.index)):
-                data[f'ema_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS].to_numpy())
+            #we calculate Tongue Tip EMA
+            if (f'ema_TT_{task}' not in data.columns) or (data[f'ema_TT_{task}'].isnull().any()) or (not len(data.index)):
+                data[f'ema_TT_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TT].to_numpy())
         
-
+            #we calculate Tongue Body EMA
+            if (f'ema_TB_{task}' not in data.columns) or (data[f'ema_TB_{task}'].isnull().any()) or (not len(data.index)):
+                data[f'ema_TB_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TB].to_numpy())
+    
     # calculate log-mel spectrograms
     print("calculate log-mel spectrogram")
     if 'acoustic' in subscores or 'semantic' in subscores:
@@ -348,7 +357,9 @@ def score_tongue_height(data, task):
 
 
 def score_ema(data, task):
-    s_ema = 100 * (1- np.mean(data.progress_apply(lambda row: RMSE(row[f'ema_{task}'], row['reference_ema']), axis=1)) /BASELINE_EMA)
+    s_ema = 100 * (2 - (np.mean(data.progress_apply(lambda row: RMSE(row[f'ema_TT_{task}'], row['reference_ema_TT']), axis=1)
+                        + data.progress_apply(lambda row: RMSE(row[f'ema_TB_{task}'], row['reference_ema_TB']), axis=1))
+                        / BASELINE_EMA))
     return s_ema
 
 

@@ -29,7 +29,6 @@ import ctypes
 import math
 import os
 import pickle
-import shutil
 import subprocess
 import tempfile
 
@@ -334,7 +333,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
             # get label, phones and mean phone durations (based on CommonVoice)
             try:
                 label, phones, phone_durations = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)][["label","phones" ,"phone_durations"]].iloc[0]
-            except IndexError as e:
+            except IndexError:
                 raise ValueError("Unknown Semantic Vector.") from None
             if not os.path.exists(os.path.join(path, "temp_output")):
                 os.mkdir(os.path.join(path, "temp_output"))
@@ -353,8 +352,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 # get label
                 try:
                     label = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)].label.iloc[0]
-                    
-                except IndexError as e:
+                except IndexError:
                     raise ValueError("Unknown Semantic Vector.") from None
 
             # store input
@@ -395,7 +393,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
 
                 try:
                     phones.append(sampa_convert_dict[phone.label])
-                except KeyError as e:
+                except KeyError:
                     raise ValueError("Unknown Phone transcribed.") from None
                 phone_durations.append(phone.end - phone.start)
 

@@ -792,6 +792,6 @@ def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15
             elif calculate == "binary":
                 section += [bool(np.sum(area <= 0.001))]
             else:
-                raise Exception(f"calculate must be one of ['raw', 'mean', 'binary']")
+                raise Exception("calculate must be one of ['raw', 'mean', 'binary']")
         section_per_time += [section]
     return section_per_time

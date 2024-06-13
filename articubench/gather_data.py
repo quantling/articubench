@@ -81,8 +81,6 @@ essv_wide.to_pickle('ja_halt_no-audio.pickle')
 
 # add signal and sampling_rate on server marser
 import pandas as pd
-import soundfile as sf
-from tqdm import tqdm
 
 PATH_KEC = "/mnt/shared/corpora/German.KEC/Wav_processed_no_names"
 

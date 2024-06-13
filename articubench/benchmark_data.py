@@ -44,7 +44,6 @@ import os
 import math
 
 import pandas as pd
-import numpy as np
 
 from .eval_tongue_height import tongue_height_from_cps
 from .util import cps_to_ema

@@ -40,12 +40,15 @@ import pandas as pd
 import torch
 import soundfile as sf
 from paule import paule
+from paule import util as paule_util
 
 from .embedding_models import  MelEmbeddingModel
 from . import util
 
 
-DEVICE = torch.device('cpu')  #torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+paule_util.download_pretrained_weights()
+
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 DIR = os.path.dirname(__file__)
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
@@ -160,6 +163,59 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
     assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
 
+# I copy pasted this
+def synth_paule_not_fast(seq_length, *, target_semantic_vector=None,
+        target_audio=None, sampling_rate=None):
+    if target_semantic_vector is None and target_audio is None:
+        raise ValueError("You have to either give target_semantic_vector or "
+                "target_audio and sampling_rate or both targets.")
+    elif target_semantic_vector is None:
+        results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
+                learning_rate_learning=0.001,
+                target_acoustic=(target_audio, sampling_rate),
+                initialize_from="acoustic",
+                objective="acoustic_semvec",
+                n_outer=10, n_inner=24,
+                continue_learning=False,
+                log_ii=5,
+                log_semantics=False,
+                n_batches=3, batch_size=8, n_epochs=10,
+                log_gradients=False,
+                plot=False, seed=None, verbose=False)
+    elif target_audio is None:
+        results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
+                learning_rate_learning=0.001,
+                target_semvec=target_semantic_vector,
+                target_seq_length=int(seq_length // 2),
+                target_acoustic=None,
+                initialize_from="semvec",
+                objective="acoustic_semvec",
+                n_outer=10, n_inner=24,
+                continue_learning=False,
+                log_ii=5,
+                log_semantics=False,
+                n_batches=3, batch_size=8, n_epochs=10,
+                log_gradients=False,
+                plot=False, seed=None, verbose=False)
+    else:  # both
+        results = PAULE_MODEL.plan_resynth(learning_rate_planning=0.01,
+                learning_rate_learning=0.001,
+                target_semvec=target_semantic_vector,
+                target_seq_length= int(seq_length // 2),
+                target_acoustic=(target_audio, sampling_rate),
+                initialize_from="semvec",
+                objective="acoustic_semvec",
+                n_outer=10, n_inner=24,
+                continue_learning=True,
+                log_ii=5,
+                log_semantics=False,
+                n_batches=3, batch_size=8, n_epochs=10,
+                log_gradients=False,
+                plot=False, seed=None, verbose=False)
+    cps = results.planned_cp.copy()
+    print(cps.shape[0], "\n", seq_length)
+    assert cps.shape[0] == seq_length
+    return util.inv_normalize_cp(cps)
 
 def synth_paule_fast(seq_length, *, target_semantic_vector=None,
         target_audio=None, sampling_rate=None):
@@ -216,6 +272,7 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
+    print(cps.shape[0], "\n", seq_length)
     assert cps.shape[0] == seq_length
     return util.inv_normalize_cp(cps)
 
@@ -232,6 +289,8 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         Please install mfa into a conda environment named 'aligner', e. g. with::
 
             conda create -n aligner -c conda-forge montreal-forced-aligner=2.2.17 openfst=1.8.2 kaldi=5.5.1068
+            conda run -n aligner mfa server init
+            conda run -n aligner mfa server stop
 
         Test if the installation was successful with 'conda run -n aligner mfa version'.
 
@@ -246,13 +305,13 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
     # download mfa data if not already downlaoded
     command = 'conda run -n aligner mfa model list g2p'
     output = subprocess.run(command.split(), capture_output=True, text=True).stdout
-    if not 'german_mfa' in output:
+    if 'german_mfa' not in output:
         print("Dowloading g2p model...")
         command = 'conda run -n aligner mfa model download g2p german_mfa'
         subprocess.run(command.split())
     command = 'conda run -n aligner mfa model list acoustic'
     output = subprocess.run(command.split(), capture_output=True, text=True).stdout
-    if not 'german_mfa' in output:
+    if 'german_mfa' not in output:
         print("Dowloading acoustic model...")
         command = 'conda run -n aligner mfa model download acoustic german_mfa'
         subprocess.run(command.split())
@@ -274,7 +333,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         elif target_audio is None:
             # get label, phones and mean phone durations (based on CommonVoice)
             try:
-                label,phones, phone_durations = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)][["label","phones" ,"phone_durations"]].iloc[0]
+                label, phones, phone_durations = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)][["label","phones" ,"phone_durations"]].iloc[0]
             except IndexError as e:
                 raise ValueError("Unknown Semantic Vector.") from None
             if not os.path.exists(os.path.join(path, "temp_output")):
@@ -294,6 +353,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 # get label
                 try:
                     label = LABEL_VECTORS[LABEL_VECTORS.vector.astype(str) == str(target_semantic_vector)].label.iloc[0]
+                    
                 except IndexError as e:
                     raise ValueError("Unknown Semantic Vector.") from None
 
@@ -303,10 +363,15 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                 f.write(label)
 
             # align input
+            command = 'conda run -n aligner mfa server start'.split()
+            print(' '.join(command))
+            subprocess.run(command, capture_output=~verbose)
             command = ('conda run -n aligner mfa g2p'.split()
-                    + [os.path.join(path, "temp_input"), 'german_mfa',  os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
+                    + [os.path.join(path, "temp_input"), "german_mfa", os.path.join(path, "temp_input/target_dict.txt"), '--clean', '--overwrite'])
+            print(' '.join(command))
             subprocess.run(command, capture_output=~verbose)
             command = 'conda run -n aligner mfa configure -t'.split() + [os.path.join(path, "temp_output")]
+            print(' '.join(command))
             subprocess.run(command, capture_output=~verbose)
             command = ('conda run -n aligner mfa align'.split()
                     + [os.path.join(path,"temp_input"),
@@ -314,14 +379,15 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
                        'german_mfa',
                        os.path.join(path,"temp_output"),
                        '--clean'])
+            print(' '.join(command))
             subprocess.run(command, capture_output=~verbose)
 
             # extract sampa phones
             tg = textgrid.openTextgrid(os.path.join(path, "temp_output/target_audio.TextGrid"), False)
-            word = tg.getTier('words').entries[0]
+            word = tg.getTier("words").entries[0]
             phones = list()
             phone_durations = list()
-            for phone in tg.getTier('phones').entries:
+            for phone in tg.getTier("phones").entries:
                 if phone.start >= word.end:
                     break
                 if phone.start < word.start:

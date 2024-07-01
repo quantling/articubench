@@ -187,16 +187,13 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                         + data.progress_apply(lambda row: RMSE(row['ema_TB_baseline'], row['reference_ema_TB']), axis=1))
 
         for task in tasks:
-            #we calculate EMAs once and store them in the dataframe
-            data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps))
-            
-            #Tongue Tip EMA
+            #we calculate Tongue Tip EMA
             if _no_data_in_column(f'ema_TT_{task}', data):
-                data[f'ema_TT_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
+                data[f'ema_TT_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TT].to_numpy())
         
-            #Tongue Body EMA
+            #we calculate Tongue Body EMA
             if _no_data_in_column(f'ema_TB_{task}', data):
-                data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
+                data[f'ema_TB_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TB].to_numpy())
     
     # calculate log-mel spectrograms
     print("calculate log-mel spectrogram")

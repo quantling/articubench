@@ -663,7 +663,7 @@ def mel_to_tensor(mel):
     torch_mel = mel.copy()
     torch_mel.shape = (1,) + torch_mel.shape
     torch_mel = torch.from_numpy(torch_mel).detach().clone()
-    torch_mel = torch_mel.to(device=DEVICE)
+    torch_mel.to(device=DEVICE)
     return torch_mel
 
 

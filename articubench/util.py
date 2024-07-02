@@ -4,6 +4,9 @@ from math import asin, pi, atan2, cos
 import os
 import sys
 import tempfile
+import zipfile
+import io
+import shutil
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +14,7 @@ import librosa
 import torch.nn
 import pandas as pd
 import torch
+import requests
 
 
 # load vocaltractlab binary
@@ -781,10 +785,10 @@ def calculate_roll_pitch_yaw(rotation_matrix):
 def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15, 16], calculate="raw"):
     length = np.cumsum(tube_length,axis=1)
     section_per_time = []
-    for t, l in enumerate(length):
+    for t, len_ in enumerate(length):
         section = []
-        for i,step in enumerate(steps[:-1]):
-            area = tube_area[t,np.where(np.logical_and(l>=step, l<=steps[i+1]))]
+        for i, step in enumerate(steps[:-1]):
+            area = tube_area[t,np.where(np.logical_and(len_>=step, len_<=steps[i+1]))]
             if calculate == "raw":
                 section += [area]
             elif calculate == "mean":
@@ -795,3 +799,38 @@ def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15
                 raise Exception("calculate must be one of ['raw', 'mean', 'binary']")
         section_per_time += [section]
     return section_per_time
+
+
+def download_pretrained_weights(*, skip_if_exists=True, verbose=True):
+    package_path = DIR
+    model_weights_path = os.path.join(package_path, 'models')
+    if os.path.isdir(model_weights_path):
+        if skip_if_exists:
+            if verbose:
+                print(f"pretrained_models exist already. Skip download. Path is {model_weights_path}")
+                print(f'Version of pretrained weights is "{get_pretrained_weights_version()}"')
+                print('To forcefully download the weights, use: ')
+                print('  `util.download_pretrained_weights(skip_if_exists=False)`')
+            return
+        shutil.rmtree(model_weights_path)
+    zip_file_url = "https://nc.mlcloud.uni-tuebingen.de/index.php/s/EFr8682rnYKYiWz/download"
+    if verbose:
+        print(f"downloading 50 MB of model weights from {zip_file_url}")
+        print(f"saving pretrained weights to {model_weights_path}")
+    stream = requests.get(zip_file_url, stream=True)
+    zip_file = zipfile.ZipFile(io.BytesIO(stream.content))
+    zip_file.extractall(package_path)
+    if verbose:
+        print(f'Version of pretrained weights is "{get_pretrained_weights_version()}"')
+
+
+def get_pretrained_weights_version():
+    """read and return the version of the pretrained weights, <No version file
+    found> if no pretrained weights exist"""
+    version_path = os.path.join(DIR, 'models/version.txt')
+    if not os.path.exists(version_path):
+        return f"<No version file found at {version_path}>"
+    with open(version_path, 'rt') as vfile:
+        version = vfile.read().strip()
+    return version
+

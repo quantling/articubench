@@ -809,6 +809,8 @@ def download_pretrained_weights(*, skip_if_exists=True, verbose=True):
             if verbose:
                 print(f"pretrained_models exist already. Skip download. Path is {model_weights_path}")
                 print(f'Version of pretrained weights is "{get_pretrained_weights_version()}"')
+                print('To forcefully download the weights, use: ')
+                print('  `util.download_pretrained_weights(skip_if_exists=False)`')
             return
         shutil.rmtree(model_weights_path)
     zip_file_url = "https://nc.mlcloud.uni-tuebingen.de/index.php/s/EFr8682rnYKYiWz/download"

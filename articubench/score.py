@@ -176,11 +176,13 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     # calculate EMA 
     print("calculating EMAs")
     if subscores == 'all' or 'articulatory' in subscores:
+        #we calculate EMAs once and store them in the dataframe
+        data[f'ema_points_baseline'] = data[f'cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps))
 
         if _no_data_in_column('ema_TT_baseline', data):
-                data['ema_TT_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TT].to_numpy())
+                data['ema_TT_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
         if _no_data_in_column('ema_TB_baseline', data):
-                data['ema_TB_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps)[EMAS_TB].to_numpy())
+                data['ema_TB_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
 
         global BASELINE_EMA
         BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_TT_baseline'], row['reference_ema_TT']), axis=1)

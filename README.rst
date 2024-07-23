@@ -29,8 +29,8 @@ Overview
   :width: 800
   :alt: Box and arrow overview of the data flow and tasks of the articubench benchmark.
 
-The benchmarks defines three tasks: semantic only, semantic-acoustic and
-acoustic only.
+The benchmarks defines three tasks: acoustic only (copy-synthesis), semantic-acoustic and
+semantic only.
 
 Control Model comparison
 ------------------------

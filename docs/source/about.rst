@@ -19,7 +19,7 @@ Contact
 
 In case you want to contact the project maintainers, please send an email to
 
-      konstantin [dot] sering [at] uni [minus] tuebingen [dot de
+      konstantin [dot] sering [at] uni [minus] tuebingen [dot] de
 
 
 Citation
@@ -29,7 +29,7 @@ TODO see pyndl.
 
 Funding
 -------
-*articubench* was partially funded by an ERC Advanced Grant (no. 742545)..
+*articubench* was partially funded by an ERC Advanced Grant (no. 742545).
 
 
 Acknowledgements

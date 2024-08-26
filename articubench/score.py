@@ -18,7 +18,7 @@ from .embedding_models import MelEmbeddingModel
 from .control_models import synth_baseline_schwa
 from . import control_models
 from . import benchmark_data
-
+import fasttext.util
 tqdm.pandas()
 
 DIR = os.path.dirname(__file__)
@@ -48,8 +48,8 @@ MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.7831
 MAX_JERK_GECO = 0.034748
 MAX_JERK_GECO = 150.0
 
-#LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/label_vectors.pkl"))
-LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
+LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors2.pkl"))
+
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
 
 BASELINE_TONGUE_HEIGHT = None

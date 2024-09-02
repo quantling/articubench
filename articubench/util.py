@@ -16,6 +16,7 @@ import pandas as pd
 import torch
 import requests
 
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # load vocaltractlab binary
 DIR = os.path.dirname(__file__)
@@ -428,11 +429,13 @@ def pad_same_to_even_seq_length(array):
     else:
         return array
 
+
 def half_seq_by_average_pooling(seq):
     if len(seq) % 2:
         seq = pad_same_to_even_seq_length(seq)
     half_seq = (seq[::2,:] + seq[1::2,:])/2
     return half_seq
+
 
 def export_svgs(cps, path='svgs/', hop_length=5):
     """
@@ -655,11 +658,14 @@ def cps_to_ema(cps):
         emas = pd.read_table(os.path.join(path, f"{file_name}-ema.txt"), sep=' ')
     return emas
 
+
 def mel_to_tensor(mel):
     torch_mel = mel.copy()
     torch_mel.shape = (1,) + torch_mel.shape
     torch_mel = torch.from_numpy(torch_mel).detach().clone()
+    torch_mel = torch_mel.to(device=DEVICE)
     return torch_mel
+
 
 def round_up_to_even(f):
     return math.ceil(f / 2.) * 2

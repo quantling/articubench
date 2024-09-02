@@ -47,7 +47,8 @@ from . import util
 
 paule_util.download_pretrained_weights()
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 DIR = os.path.dirname(__file__)
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
@@ -98,7 +99,7 @@ def synth_baseline_schwa(seq_length, *, target_semantic_vector=None, target_audi
     fade_in = min(seq_length, 1000)
     cps[:fade_in, 20] *= np.linspace(0, 1, fade_in)
 
-    assert cps.shape[0] == seq_length
+    assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
     return cps
 
 
@@ -159,7 +160,7 @@ def synth_paule_acoustic_semvec(seq_length, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
-    assert cps.shape[0] == seq_length
+    assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
     return util.inv_normalize_cp(cps)
 
 # I copy pasted this
@@ -212,8 +213,7 @@ def synth_paule_not_fast(seq_length, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
-    print(cps.shape[0], "\n", seq_length)
-    assert cps.shape[0] == seq_length
+    assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
     return util.inv_normalize_cp(cps)
 
 def synth_paule_fast(seq_length, *, target_semantic_vector=None,
@@ -271,8 +271,7 @@ def synth_paule_fast(seq_length, *, target_semantic_vector=None,
                 log_gradients=False,
                 plot=False, seed=None, verbose=False)
     cps = results.planned_cp.copy()
-    print(cps.shape[0], "\n", seq_length)
-    assert cps.shape[0] == seq_length
+    assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
     return util.inv_normalize_cp(cps)
 
 
@@ -439,7 +438,7 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
         start = math.floor((cps.shape[0] - seq_length) / 2)
         end = cps.shape[0] - math.ceil((cps.shape[0] - seq_length) / 2)
         cps = cps[start:end, :]
-    assert cps.shape[0] == seq_length
+    assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
 
     return cps
 

@@ -5,6 +5,7 @@ Here the benchmark subscores and the total score are calculated.
 from collections import abc
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
@@ -67,7 +68,12 @@ def _no_data_in_column(column, data):
             or (data[column].isnull().any())
             or (not len(data.index)))
 
+def process_task(task, data_subset):
+    if _no_data_in_column(f'sig_{task}', data_subset):
+        #data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0])
+        data_subset[f'sig_{task}'] = data_subset[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0])
 
+    return data_subset[[f'sig_{task}']]
 def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     'semantic-only'), subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
     """
@@ -120,7 +126,6 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     else:
         data = preloaded_data.copy()
 
-
     # generate Baseline:
     print("generate baseline")
     if _no_data_in_column('cps_baseline', data):
@@ -154,6 +159,25 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
     # synthesize cps
     print("synthesize cps")
+
+    #test_multi_time = time.time()
+#
+    ## Using ThreadPoolExecutor to parallelize tasks
+    #with ProcessPoolExecutor() as executor:
+    #    # Submit each task with a copy of the relevant data
+    #    #futures = {executor.submit(process_task, task, data.copy()): task for task in tasks}
+    #    futures = {executor.submit(process_task, task, data.copy()): task for task in tasks}
+#
+    #    # Collect the results and update the main dataframe
+    #    for future in as_completed(futures):
+    #        task = futures[future]
+    #        try:
+    #            result = future.result()  # This is a DataFrame with the updated column
+    #            data.update(result) 
+    #        except Exception as exc:
+    #            print(f'Task {task} generated an exception: {exc}')
+    #
+    #print(time.time() - test_multi_time)
     for task in tasks:
         if _no_data_in_column(f'sig_{task}', data):
             data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
@@ -177,11 +201,13 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     print("calculating EMAs")
     if subscores == 'all' or 'articulatory' in subscores:
         #we calculate EMAs once and store them in the dataframe
-        data[f'ema_points_baseline'] = data[f'cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps))
+        data['ema_points_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps))
 
         if _no_data_in_column('ema_TT_baseline', data):
                 data['ema_TT_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
+                data['ema_TT_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
         if _no_data_in_column('ema_TB_baseline', data):
+                data['ema_TB_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
                 data['ema_TB_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
 
         global BASELINE_EMA
@@ -192,11 +218,15 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             #we calculate EMAs once and store them in the dataframe
             data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps))
             #we calculate Tongue Tip EMA
+            data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cp: cps_to_ema(cp))
+
             if _no_data_in_column(f'ema_TT_{task}', data):
+                data[f'ema_TT_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
                 data[f'ema_TT_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
         
             #we calculate Tongue Body EMA
             if _no_data_in_column(f'ema_TB_{task}', data):
+                data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
                 data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
     
     # calculate log-mel spectrograms
@@ -415,5 +445,4 @@ def sem_rank(semvec, label):
     return rank_target
 
 
-    results = score(control_models.synth_paule_fast)
 

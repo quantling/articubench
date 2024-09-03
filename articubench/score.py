@@ -76,6 +76,8 @@ def process_task(task, data_subset):
 def apply_speak(cps):
     return speak(cps)[0]
 
+def apply_tongue_height_from_cps(cps):
+    return tongue_height_from_cps(cps)
 
 def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     'semantic-only'), subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
@@ -192,7 +194,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         if _no_data_in_column(f'sig_{task}', data):
             with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
                     results = list(tqdm(executor.map(apply_speak, data[f'cps_{task}']), total=len(data)))
-                    data['sig_{task}'] = results
+                    data[f'sig_{task}'] = results
         #if _no_data_in_column(f'sig_{task}', data):
         #    data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
 
@@ -201,13 +203,20 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     print("calculate tongue height")
     if subscores == 'all' or 'articulatory' in subscores:
         if _no_data_in_column('tongue_height_baseline', data):
-            data['tongue_height_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_height_from_cps(cps))
+                with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                    results = list(tqdm(executor.map(tongue_height_from_cps, data['cps_baseline']), total=len(data)))
+                    data['tongue_height_baseline'] = results
+            #data['tongue_height_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_height_from_cps(cps))
         global BASELINE_TONGUE_HEIGHT
         BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_height_baseline'], row['reference_tongue_height']),axis=1))
 
         for task in tasks:
             if _no_data_in_column(f'tongue_height_{task}', data):
-                data[f'tongue_height_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: tongue_height_from_cps(cps))
+                with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                    results = list(tqdm(executor.map(tongue_height_from_cps, data[f'cps_{task}']), total=len(data)))
+                    data[f'tongue_height_{task}'] = results
+
+                #data[f'tongue_height_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: tongue_height_from_cps(cps))
                 # TODO: only calculate tongue height where ultra sound data is available for comparison TODO
 
 
@@ -215,14 +224,16 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     print("calculating EMAs")
     if subscores == 'all' or 'articulatory' in subscores:
         #we calculate EMAs once and store them in the dataframe
-        data['ema_points_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps))
+        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            results = list(tqdm(executor.map(cps_to_ema, data['cps_baseline']), total=len(data)))
+            data['ema_points_baseline'] = results
+        #data['ema_points_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps))
 
         if _no_data_in_column('ema_TT_baseline', data):
                 data['ema_TT_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
-                data['ema_TT_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
         if _no_data_in_column('ema_TB_baseline', data):
                 data['ema_TB_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
-                data['ema_TB_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
+
 
         global BASELINE_EMA
         BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_TT_baseline'], row['reference_ema_TT']), axis=1)
@@ -230,18 +241,20 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
 
         for task in tasks:
             #we calculate EMAs once and store them in the dataframe
-            data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: cps_to_ema(cps))
-            #we calculate Tongue Tip EMA
-            data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cp: cps_to_ema(cp))
+            with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                results = list(tqdm(executor.map(cps_to_ema, data[f'cps_{task}']), total=len(data)))
+                data[f'ema_points_{task}'] = results
+
+            
+            #data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cp: cps_to_ema(cp))
 
             if _no_data_in_column(f'ema_TT_{task}', data):
-                data[f'ema_TT_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
                 data[f'ema_TT_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
         
             #we calculate Tongue Body EMA
             if _no_data_in_column(f'ema_TB_{task}', data):
                 data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
-                data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
+
     
     # calculate log-mel spectrograms
     print("calculate log-mel spectrogram")

@@ -49,7 +49,7 @@ MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.7831
 MAX_JERK_GECO = 0.034748
 MAX_JERK_GECO = 150.0
 
-LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors2.pkl"))
+LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
 
@@ -73,7 +73,10 @@ def process_task(task, data_subset):
         #data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0])
         data_subset[f'sig_{task}'] = data_subset[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0])
 
-    return data_subset[[f'sig_{task}']]
+def apply_speak(cps):
+    return speak(cps)[0]
+
+
 def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
     'semantic-only'), subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
     """
@@ -130,8 +133,15 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     print("generate baseline")
     if _no_data_in_column('cps_baseline', data):
         data['cps_baseline'] = data.len_cp.progress_apply(synth_baseline_schwa)
+    
+    ## Using ProcessPoolExecutor to parallelize tasks
     if _no_data_in_column('sig_baseline', data):
-        data['sig_baseline'] = data['cps_baseline'].progress_apply(lambda cps: speak(cps)[0])
+        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                results = list(tqdm(executor.map(apply_speak, data['cps_baseline']), total=len(data)))
+                data['sig_baseline'] = results
+    
+    #if _no_data_in_column('sig_baseline', data):
+    #    data['sig_baseline'] = data['cps_baseline'].progress_apply(lambda cps: speak(cps)[0])
 
     # generate cps
     print("generate cps")
@@ -180,7 +190,11 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     #print(time.time() - test_multi_time)
     for task in tasks:
         if _no_data_in_column(f'sig_{task}', data):
-            data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
+            with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                    results = list(tqdm(executor.map(apply_speak, data[f'cps_{task}']), total=len(data)))
+                    data['sig_{task}'] = results
+        #if _no_data_in_column(f'sig_{task}', data):
+        #    data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
 
 
     # calculate tongue heights

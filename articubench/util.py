@@ -795,3 +795,41 @@ def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15
                 raise Exception("calculate must be one of ['raw', 'mean', 'binary']")
         section_per_time += [section]
     return section_per_time
+
+
+def scale_emas_to_vtl(ema_point):
+    '''Scales one 3d ema point from ja_halt Dataset to approximately scale to the VTL emas.
+    Firstly converting mm to cm, changing y and z axis and then scaling the points.
+    Parameters
+    ==========
+    ema_point : np.array
+        3D ema point from ja halt dataset with [Sen.x, Sen.y, Sen.z] numpy arrays over time.
+    Returns
+    =======
+    ema_point : np.array
+        returns the 3D ema points for different virtual EMA sensors in a
+        pandas.DataFrame'''
+    
+    ema_point = ema_point / 10
+
+    ema_point[1], ema_point[2] = ema_point[2], ema_point[1]
+
+    ema_point[0] = ema_point[0] + 8
+    ema_point[2] = ema_point[2] - .3
+
+    return ema_point
+
+def interpolate(length: int, array: np.array):
+    '''Interpolates the given array to the given length using scipy's Pchip Interpolator function.
+    Parameters
+    ==========
+    length : int
+        the length we wish the given array to be interpolatet to
+    array : np.array
+        the numpy array we wish to interpolate to the given length
+    Returns
+    =======
+    array : np.array
+        return an interpolatet numpy array of length "length". '''
+    
+    return PchipInterpolator(np.linspace(0, 1, len(array)), array)(np.linspace(0, 1, length))

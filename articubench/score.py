@@ -6,6 +6,7 @@ from collections import abc
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+import logging
 
 import numpy as np
 import pandas as pd
@@ -20,10 +21,14 @@ from .control_models import synth_baseline_schwa
 from . import control_models
 from . import benchmark_data
 import fasttext.util
+
 tqdm.pandas()
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 DIR = os.path.dirname(__file__)
-
+CPU_CORES = 8
 
 """
 MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.044404  ,
@@ -79,8 +84,8 @@ def apply_speak(cps):
 def apply_tongue_height_from_cps(cps):
     return tongue_height_from_cps(cps)
 
-def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic',
-    'semantic-only'), subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
+def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', tasks='all', 
+          subscores='all', return_individual_subscores=False, device=torch.device('cpu')):
     """
     Main function to calculate the score for the benchmark.
 
@@ -114,6 +119,8 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     if subscores == 'all':
         subscores = ('acoustic', 'articulatory', 'semantic')
 
+    tasks = ('baseline',) + tasks
+
     assert any([task in ('copy-synthesis', 'semantic-acoustic', 'semantic-only') for task in tasks]), "tasks has to be one of 'copy-synthesis', 'semantic-acoustic', 'semantic-only'"
 
     # load data
@@ -132,21 +139,12 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         data = preloaded_data.copy()
 
     # generate Baseline:
-    print("generate baseline")
+    print("generating cps")
+
+
     if _no_data_in_column('cps_baseline', data):
         data['cps_baseline'] = data.len_cp.progress_apply(synth_baseline_schwa)
     
-    ## Using ProcessPoolExecutor to parallelize tasks
-    if _no_data_in_column('sig_baseline', data):
-        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-                results = list(tqdm(executor.map(apply_speak, data['cps_baseline']), total=len(data)))
-                data['sig_baseline'] = results
-    
-    #if _no_data_in_column('sig_baseline', data):
-    #    data['sig_baseline'] = data['cps_baseline'].progress_apply(lambda cps: speak(cps)[0])
-
-    # generate cps
-    print("generate cps")
     if 'copy-synthesis' in tasks:
         if _no_data_in_column('cps_copy-synthesis', data):
             data['cps_copy-synthesis'] = data.progress_apply(
@@ -154,6 +152,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                                       target_audio=row['target_sig'],
                                       sampling_rate=row['target_sr']),
                     axis=1)
+            
     if 'semantic-acoustic' in tasks:
         if _no_data_in_column('cps_semantic-acoustic', data):
             data['cps_semantic-acoustic'] = data.progress_apply(
@@ -162,6 +161,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                                       sampling_rate=row['target_sr'],
                                       target_semantic_vector=row['target_semantic_vector']),
                     axis=1)
+            
     if 'semantic-only' in tasks:
         if _no_data_in_column('cps_semantic-only', data):
             data['cps_semantic-only'] = data.progress_apply(
@@ -169,84 +169,39 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                                       target_semantic_vector=row['target_semantic_vector']),
                     axis=1)
 
-    # synthesize cps
-    print("synthesize cps")
 
-    #test_multi_time = time.time()
-#
-    ## Using ThreadPoolExecutor to parallelize tasks
-    #with ProcessPoolExecutor() as executor:
-    #    # Submit each task with a copy of the relevant data
-    #    #futures = {executor.submit(process_task, task, data.copy()): task for task in tasks}
-    #    futures = {executor.submit(process_task, task, data.copy()): task for task in tasks}
-#
-    #    # Collect the results and update the main dataframe
-    #    for future in as_completed(futures):
-    #        task = futures[future]
-    #        try:
-    #            result = future.result()  # This is a DataFrame with the updated column
-    #            data.update(result) 
-    #        except Exception as exc:
-    #            print(f'Task {task} generated an exception: {exc}')
-    #
-    #print(time.time() - test_multi_time)
     for task in tasks:
+        logging.info(f'synthesizing {task} cps')
         if _no_data_in_column(f'sig_{task}', data):
-            with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            with ProcessPoolExecutor(max_workers=CPU_CORES) as executor:
                     results = list(tqdm(executor.map(apply_speak, data[f'cps_{task}']), total=len(data)))
                     data[f'sig_{task}'] = results
-        #if _no_data_in_column(f'sig_{task}', data):
-        #    data[f'sig_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: speak(cps)[0]) # inv_normalize ?
 
 
     # calculate tongue heights
     print("calculate tongue height")
     if subscores == 'all' or 'articulatory' in subscores:
-        if _no_data_in_column('tongue_height_baseline', data):
-                with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-                    results = list(tqdm(executor.map(tongue_height_from_cps, data['cps_baseline']), total=len(data)))
-                    data['tongue_height_baseline'] = results
-            #data['tongue_height_baseline'] = data['cps_baseline'].progress_apply(lambda cps: tongue_height_from_cps(cps))
-        global BASELINE_TONGUE_HEIGHT
-        BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_height_baseline'], row['reference_tongue_height']),axis=1))
 
         for task in tasks:
+            logging.info(f'calculating tongue height of {task} task')
+
             if _no_data_in_column(f'tongue_height_{task}', data):
-                with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                with ProcessPoolExecutor(max_workers=CPU_CORES) as executor:
                     results = list(tqdm(executor.map(tongue_height_from_cps, data[f'cps_{task}']), total=len(data)))
                     data[f'tongue_height_{task}'] = results
 
-                #data[f'tongue_height_{task}'] = data[f'cps_{task}'].progress_apply(lambda cps: tongue_height_from_cps(cps))
                 # TODO: only calculate tongue height where ultra sound data is available for comparison TODO
+        
+        global BASELINE_TONGUE_HEIGHT
+        BASELINE_TONGUE_HEIGHT = np.mean(data.progress_apply(lambda row: RMSE(row['tongue_height_baseline'], row['reference_tongue_height']),axis=1))
 
-
-    # calculate EMA 
-    print("calculating EMAs")
-    if subscores == 'all' or 'articulatory' in subscores:
-        #we calculate EMAs once and store them in the dataframe
-        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-            results = list(tqdm(executor.map(cps_to_ema, data['cps_baseline']), total=len(data)))
-            data['ema_points_baseline'] = results
-        #data['ema_points_baseline'] = data['cps_baseline'].progress_apply(lambda cps: cps_to_ema(cps))
-
-        if _no_data_in_column('ema_TT_baseline', data):
-                data['ema_TT_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
-        if _no_data_in_column('ema_TB_baseline', data):
-                data['ema_TB_baseline'] = data['ema_points_baseline'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
-
-
-        global BASELINE_EMA
-        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_TT_baseline'], row['reference_ema_TT']), axis=1)
-                        + data.progress_apply(lambda row: RMSE(row['ema_TB_baseline'], row['reference_ema_TB']), axis=1))
 
         for task in tasks:
-            #we calculate EMAs once and store them in the dataframe
-            with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            logging.info(f'Calculating EMA Points of {task} task')
+
+            with ProcessPoolExecutor(max_workers=CPU_CORES) as executor:
                 results = list(tqdm(executor.map(cps_to_ema, data[f'cps_{task}']), total=len(data)))
                 data[f'ema_points_{task}'] = results
-
-            
-            #data[f'ema_points_{task}'] = data[f'cps_{task}'].progress_apply(lambda cp: cps_to_ema(cp))
 
             if _no_data_in_column(f'ema_TT_{task}', data):
                 data[f'ema_TT_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy())
@@ -255,18 +210,21 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             if _no_data_in_column(f'ema_TB_{task}', data):
                 data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
 
-    
+        global BASELINE_EMA
+        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_TT_baseline'], row['reference_ema_TT']), axis=1)
+                        + data.progress_apply(lambda row: RMSE(row['ema_TB_baseline'], row['reference_ema_TB']), axis=1))
+
+
     # calculate log-mel spectrograms
     print("calculate log-mel spectrogram")
     if 'acoustic' in subscores or 'semantic' in subscores:
-        if _no_data_in_column('log_mel_baseline', data):
-                data['log_mel_baseline'] = data['sig_baseline'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig, 44100)))
-        if _no_data_in_column('loudness_baseline', data):
-                data['loudness_baseline'] = data['log_mel_baseline'].progress_apply(lambda x: np.mean(x, axis=1))
-
         for task in tasks:
+
+            logging.info(f'calculating log-mel spectrogram of {task} task')
             if _no_data_in_column(f'log_mel_{task}', data):
                 data[f'log_mel_{task}'] = data[f'sig_{task}'].progress_apply(lambda sig: normalize_mel_librosa(librosa_melspec(sig,44100)))
+            
+            logging.info(f'calculating loudness of {task} task')
             if _no_data_in_column(f'loudness_{task}', data):
                 data[f'loudness_{task}'] = data[f'log_mel_{task}'].progress_apply(lambda x: np.mean(x, axis=1))
 
@@ -281,6 +239,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         BASELINE_SPECTROGRAM = np.mean(data.progress_apply(lambda row: RMSE(row['log_mel_baseline'], row['target_log_mel']), axis=1))
         BASELINE_LOUDNESS = np.mean(data.progress_apply(lambda row: RMSE(row['loudness_baseline'], row['target_loudness']), axis=1))
 
+
     # predict vector embeddings
     print("predict vector embedding")
     if 'semantic' in subscores:
@@ -292,13 +251,6 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         embedder.eval()
 
         with torch.no_grad():
-            if _no_data_in_column('semantic_vector_baseline', data):
-                data['semantic_vector_baseline'] = data['log_mel_baseline'].progress_apply(lambda mel: embedder(mel_to_tensor(mel), (torch.tensor(mel.shape[0]),))[-1,:].detach().cpu().numpy().copy())
-            if _no_data_in_column('semantic_rank_baseline', data):
-                data['semantic_rank_baseline'] = data.progress_apply(lambda row: sem_rank(row['semantic_vector_baseline'], row['label']),axis=1)
-
-            global BASELINE_SEMDIST
-            BASELINE_SEMDIST = np.mean(data.progress_apply(lambda row: RMSE(row['semantic_vector_baseline'], row['target_semantic_vector']),axis=1))
 
             for task in tasks:
                 if _no_data_in_column(f'semantic_vector_{task}', data):
@@ -306,6 +258,8 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                 if _no_data_in_column(f'semantic_rank_{task}', data):
                     data[f'semantic_rank_{task}'] = data.progress_apply(lambda row: sem_rank(row[f'semantic_vector_{task}'], row['label']),axis=1)
 
+            global BASELINE_SEMDIST
+            BASELINE_SEMDIST = np.mean(data.progress_apply(lambda row: RMSE(row['semantic_vector_baseline'], row['target_semantic_vector']),axis=1))
 
     # ????
     # refactor model from function to class with: model.copy_synthesis,
@@ -325,7 +279,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         # articulatory
         if 'articulatory' in subscores:
             print("articulatory task")
-            if ('score_articulatory' not in scores.columns) or (scores.loc[scores.task == task, 'score_articulatory'].isnull().any()) or (not len(scores.index)):
+            if _no_data_in_column('scores_articulatory', scores):
                 s_articulatory, subscores_articulatory = score_articulatory(data, task=task)
                 if return_individual_subscores:
                     scores.loc[scores.task == task, 'score_articulatory/tongue_height'] = subscores_articulatory[0]
@@ -337,7 +291,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         # acoustic
         if 'acoustic' in subscores:
             print("acoustic task")
-            if ('score_acoustic' not in scores.columns) or (scores.loc[scores.task == task, 'score_acoustic'].isnull().any()) or (not len(scores.index)):
+            if _no_data_in_column('score_acoustic', scores):
                 s_acoustic, subscores_acoustic = score_acoustic(data, task=task)
                 if return_individual_subscores:
                     scores.loc[scores.task == task, 'score_acoustic/loudness'] = subscores_acoustic[0]
@@ -348,7 +302,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
         # semantic
         if 'semantic' in subscores:
             print("semantic task")
-            if ('score_semantic' not in scores.columns) or (scores.loc[scores.task == task, 'score_semantic'].isnull().any()) or (not len(scores.index)):
+            if _no_data_in_column('score_semantic', scores):
                 s_semantic, subscores_semantic = score_semantic(data, task=task)
                 if return_individual_subscores:
                     scores.loc[scores.task == task, 'score_semantic/distance'] = subscores_semantic[0]
@@ -382,9 +336,9 @@ def score_tongue_height(data, task):
 
 
 def score_ema(data, task):
-    s_ema = 100 * (1 - (np.mean(data.progress_apply(lambda row: RMSE(row[f'ema_TT_{task}'], row['reference_ema_TT']), axis=1)
+    s_ema = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'ema_TT_{task}'], row['reference_ema_TT']), axis=1)
                         + data.progress_apply(lambda row: RMSE(row[f'ema_TB_{task}'], row['reference_ema_TB']), axis=1))
-                        / BASELINE_EMA))
+                        / BASELINE_EMA)
     return s_ema
 
 
@@ -470,6 +424,3 @@ def sem_rank(semvec, label):
     dist_argsort = np.argsort(dist)
     rank_target = np.where(dist_argsort == true_index)[0][0] + 1
     return rank_target
-
-
-

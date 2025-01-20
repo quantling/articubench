@@ -10,6 +10,7 @@
    quickstart
    overview
    installation
+   control_models
    data
    scores
    tasks

@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Tasks &#8212; articubench 0.0.1 documentation</title>
+    <title>Control models &#8212; articubench 0.0.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
@@ -15,8 +15,6 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Usage" href="usage.html" />
-    <link rel="prev" title="Scores" href="scores.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -34,51 +32,56 @@
 
           <div class="body" role="main">
             
-  <section id="tasks">
-<h1>Tasks<a class="headerlink" href="#tasks" title="Link to this heading">¶</a></h1>
-<section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
-<p>The articubench benchmark provides three distinct methods for initializing the PAULE control model and generating Control Parameters (CPs).</p>
-</section>
-<section id="task-types">
-<h2>Task Types<a class="headerlink" href="#task-types" title="Link to this heading">¶</a></h2>
-<section id="acoustic-only-copy-synthesis">
-<h3>Acoustic-only (Copy-Synthesis)<a class="headerlink" href="#acoustic-only-copy-synthesis" title="Link to this heading">¶</a></h3>
-<p><strong>Input</strong>: Target audio recording (human speech) and sample rate</p>
+  <section id="control-models">
+<h1>Control models<a class="headerlink" href="#control-models" title="Link to this heading">¶</a></h1>
+<p>Articubench has multiple control models that generate CPs for the VocalTractLab. Mainly the “Baseline”, “Segment-based” and “PAULE” model are currently implemented, while the “Inverse” model is in production.</p>
+<section id="baseline">
+<h2>Baseline<a class="headerlink" href="#baseline" title="Link to this heading">¶</a></h2>
+<p>The Baseline model is a simple model that always generates the same CPs for the VocalTractLab, which produce a simple neutral sounding “Schwa” sound when synthesized.</p>
+<p>This model is used as a reference point for the other models to compare against.</p>
 <dl class="simple">
-<dt>Purpose:</dt><dd><ul class="simple">
-<li><p>Test model’s ability to mimic human speech acoustics</p></li>
-<li><p>Focus on articulatory and acoustic quality</p></li>
-<li><p>No semantic information provided</p></li>
+<dt>Inputs for all Tasks:</dt><dd><ul class="simple">
+<li><p>Sequence length which is equal to the length of the target CPs (or half our signal length)</p></li>
 </ul>
 </dd>
 </dl>
 </section>
-<section id="semantic-only">
-<h3>Semantic-only<a class="headerlink" href="#semantic-only" title="Link to this heading">¶</a></h3>
-<p><strong>Input</strong>: Target semantic embedding vector, desired duration</p>
+<section id="segment-based">
+<h2>Segment-based<a class="headerlink" href="#segment-based" title="Link to this heading">¶</a></h2>
+<p>The Segment-based model is based on using the Montreal Forced Aligner (MFA) to generate CPs. Here we first resynthesize the original audio and a text file corresponding to the spoken word.
+Then we can use the MFA to map text to phonemes and phonemes with the audio to CPs. Generally generating smooth CPs which are quite a good approximation of the original audio.</p>
 <dl class="simple">
-<dt>Purpose:</dt><dd><ul class="simple">
-<li><p>Generate speech from meaning alone</p></li>
-<li><p>Test semantic-to-articulation mapping</p></li>
-<li><p>Handle one-to-many relationship (multiple valid pronunciations)</p></li>
-<li><p>Also known as “full generation task”</p></li>
+<dt>Inputs can be:</dt><dd><ul class="simple">
+<li><p>target semantic vector</p></li>
+<li><p>target audio signal with sample rate</p></li>
 </ul>
 </dd>
 </dl>
+<p>If a target semantic vector is not provided, the model will use the target audio signal to generate CPs. Otherwise it will always produce CPs given the semantic vector.</p>
 </section>
-<section id="semantic-acoustic">
-<h3>Semantic-Acoustic<a class="headerlink" href="#semantic-acoustic" title="Link to this heading">¶</a></h3>
-<p><strong>Input</strong>: Target audio recording with sample rate AND semantic embedding vector with a desired duration</p>
+<section id="paule">
+<h2>PAULE<a class="headerlink" href="#paule" title="Link to this heading">¶</a></h2>
+<p>PAULE is a machine learning model which generates CPs based on the given Task. It uses a forward model to map CPs to audio, an inverse model to map audio to CPs and an embedder to map audio to a semantic space.
+It is also able to learn and update its model weights given the inputs.</p>
 <dl class="simple">
-<dt>Purpose:</dt><dd><ul class="simple">
-<li><p>Joint optimization of acoustics and meaning</p></li>
-<li><p>Most complete evaluation scenario</p></li>
-<li><p>Balance multiple constraints</p></li>
+<dt>Inputs can be:</dt><dd><ul class="simple">
+<li><p>target semantic vector (for semantic-only task)</p></li>
+<li><p>target audio signal with sample rate (for acoustic-only task)</p></li>
+<li><p>both (for acoustic-semvec task)</p></li>
 </ul>
 </dd>
 </dl>
+<p>There are currently two PAULE implementations available, the “Fast” and the “Acoustic-Semvec” model. The “Fast” model is simply a PAULE model with very short trainigns, while the “Acoustic-Semvec” model goes through multiple full training cycles.</p>
 </section>
+<section id="inverse">
+<h2>Inverse<a class="headerlink" href="#inverse" title="Link to this heading">¶</a></h2>
+<p>The Inverse model is a part of PAULE, generating CPs from audio signals. It is currently in production and not yet available for use.</p>
+<dl class="simple">
+<dt>Inputs:</dt><dd><ul class="simple">
+<li><p>target audio signal with sample rate</p></li>
+</ul>
+</dd>
+</dl>
 </section>
 </section>
 
@@ -109,17 +112,13 @@
 </search>
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scores.html">Scores</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tasks</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#task-types">Task Types</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="tasks.html">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development.html">Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="articubench.html">Package overview</a></li>
@@ -130,8 +129,6 @@
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="scores.html" title="previous chapter">Scores</a></li>
-      <li>Next: <a href="usage.html" title="next chapter">Usage</a></li>
   </ul></li>
 </ul>
 </div>
@@ -155,7 +152,7 @@
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |
-      <a href="_sources/tasks.rst.txt"
+      <a href="_sources/control_models.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 

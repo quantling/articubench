@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Data &#8212; articubench 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Scores" href="scores.html" />
+    <link rel="prev" title="Installation" href="installation.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="data">
+<h1>Data<a class="headerlink" href="#data" title="Link to this heading">¶</a></h1>
+<p>Overview of the data sets included in articubench.</p>
+<section id="rationale">
+<h2>Rationale<a class="headerlink" href="#rationale" title="Link to this heading">¶</a></h2>
+<p>Articubench includes two primary datasets: tiny and small. These datasets are designed to support a range of benchmarking tasks from preliminary checks to statistically significant evaluations. Each dataset serves a specific purpose:</p>
+<ul class="simple">
+<li><p>Tiny Dataset: The tiny dataset is a minimal set designed to ensure that models can correctly process inputs and produce reasonable outputs. It is primarily used for quick validation checks during development.</p></li>
+<li><p>Small Dataset: The small dataset provides enough data to conduct meaningful benchmarking with some statistical power. It is used to compare the performance of different models on a controlled, yet manageable, dataset.</p></li>
+</ul>
+</section>
+<section id="data-sets">
+<h2>Data sets<a class="headerlink" href="#data-sets" title="Link to this heading">¶</a></h2>
+<section id="tiny">
+<h3>Tiny<a class="headerlink" href="#tiny" title="Link to this heading">¶</a></h3>
+<p>The tiny dataset is a minimal subset of the full data intended for quick and basic functionality tests. It includes only four rows, each representing a different data instance. The primary purpose of this dataset is to verify that the provided models can correctly intake data and return reasonable results without errors. The small size allows for rapid iteration and debugging during model development.</p>
+<p>Each row in the tiny dataset includes the following columns:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>file: The name of the audio file associated with the data point.</p></li>
+<li><p>label: The label or class associated with the data point.</p></li>
+<li><p>target_semantic_vector: A vector representing the semantic content of the target audio.</p></li>
+<li><p>target_sig: The waveform of the target audio signal.</p></li>
+<li><p>target_sr: The sample rate of the target audio signal.</p></li>
+<li><p>len_cp: The length of the control parameter (cp), calculated based on the duration of the target signal.</p></li>
+<li><p>reference_cp: The reference control parameters, normalized and truncated to match the length of the target signal.</p></li>
+<li><p>reference_tongue_height: Placeholder for future data related to the tongue height (currently set to None).</p></li>
+<li><p>reference_ema_TT: Placeholder for Electromagnetic Articulography (EMA) data for the tongue tip (TT), currently None.</p></li>
+<li><p>reference_ema_TB: Placeholder for EMA data for the tongue body (TB), currently None.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="small">
+<h3>Small<a class="headerlink" href="#small" title="Link to this heading">¶</a></h3>
+<p>The small dataset is a more comprehensive subset, consisting of approximately 2,000 rows. This dataset is a mixture of a subset of the GECO word corpus and 1,800 pronunciations of the words “ja” and “halt” with their respective EMA points.</p>
+<p>The small dataset includes the same columns as the tiny dataset, but with the following additional details:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>file: Names of files from the GECO corpus and specific pronunciations of “ja” and “halt.”</p></li>
+<li><p>label: Corresponding labels for each file.</p></li>
+<li><p>target_semantic_vector: Vectors representing the semantic content of each target.</p></li>
+<li><p>target_sig: The waveform of each target audio signal.</p></li>
+<li><p>target_sr: Sample rates for each target signal.</p></li>
+<li><p>len_cp: Control parameter lengths adjusted for the target signal’s duration.</p></li>
+<li><p>reference_cp: Normalized control parameters, truncated to the signal’s length.</p></li>
+<li><p>reference_tongue_height: Placeholder for future tongue height data (currently set to None).</p></li>
+<li><p>reference_ema_TT: EMA data for the TT of “ja / halt” or None .</p></li>
+<li><p>reference_ema_TB: EMA data for the TB of “ja / halt” or None .</p></li>
+</ul>
+</div></blockquote>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">articubench</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#rationale">Rationale</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data-sets">Data sets</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scores.html">Scores</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="articubench.html">Package overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="installation.html" title="previous chapter">Installation</a></li>
+      <li>Next: <a href="scores.html" title="next chapter">Scores</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Konstantin Sering.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/data.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

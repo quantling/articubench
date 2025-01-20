@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Overview &#8212; articubench 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h1>
+<p>Articubench is a benchmark model to evaluate articulatory speech synthesis systems. This benchmark uses the VocalTractLab (VTL) as its articulatory speech synthesis simulator.
+First a model like PAULE is used to generate Control Point Trajectories (CPs) for the VocalTractLab. Afterwards these CPs get simulated by the VTL to generate audio.
+Lastly our audio gets mapped by an embedder onto a semantic embedding space to infer the intended meaning of our synthesized audio compared to our original target meaning.</p>
+<p>Originally the benchmark was designed to benchmark the PAULE model on three tasks: Acoustic only (Copy-Synthesis), Semantic only and Semantic-Acoustic.
+But as long as certain requirements are met, the benchmark can be used to evaluate any control model that generates CPs for the VocalTractLab.
+How to use the benchmark is described in the <cite>Usage</cite> section.</p>
+<p>After CPs are generated, the VTL ‘speaks’ them which gives us a signal with a sample rate of 44100. Furthermore we generate tongue height and EMA data from the VTL given our CPs.</p>
+<p>Now the Benchmark calculates Scores described in the <cite>Scores</cite> section to evaluate the performance of the control model.</p>
+<p>Since all scores are calculated by comparing to a ‘baseline model’ which is always performing a “Schwa” sound no matter the input, the baseline model can unexpectedly outperform the control model in some cases.</p>
+<p>Specifically the jerk or velocity losses of our CPs and the loudness envelope can be quite good if we are using a very small dataset which contains audio similar to a “schwa”.</p>
+<section id="implementation-notes">
+<h2>Implementation Notes<a class="headerlink" href="#implementation-notes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>All tasks currently operate on word-level inputs</p></li>
+<li><dl class="simple">
+<dt>cp-trajectories must match VocalTractLab requirements:</dt><dd><ul>
+<li><p>30 control parameters per timeframe</p></li>
+<li><p>2.5ms timeframe resolution (110 samples at 44.1kHz)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Since CP resolution is higher than our EMA and ultrasound data, the model uses 1d interpolation to match the required resolution</p></li>
+<li><p>Articubench uses multi-processing for all score and data calculations, apart from the intial CP-Generation which is done sequentially on the GPU since the model trains for each CP individually</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">articubench</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-notes">Implementation Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scores.html">Scores</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tasks.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="articubench.html">Package overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="quickstart.html" title="previous chapter">Quickstart</a></li>
+      <li>Next: <a href="installation.html" title="next chapter">Installation</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Konstantin Sering.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/overview.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

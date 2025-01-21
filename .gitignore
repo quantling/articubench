@@ -1,6 +1,7 @@
 articubench.egg-info/
 dist/
 docs/build/
+docs/_build/
 build/
 __pycache__/
 docs/figure/articubench_overview.aux

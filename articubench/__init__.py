@@ -17,8 +17,9 @@ language.
 print("WARNING! The *articubench* package is still in alpha and the package "
       "  does not "
       "contain all the files you need to execute the functions defined here. "
-      "We are working on a good way to distribute the pretrained weights and "
-      "data without making the package big.")
+      "To download model weights (around 50 MB) run "
+      "`articubench.util.download_pretrained_weights()` once."
+)
 
 import os
 import sys
@@ -61,7 +62,7 @@ def sysinfo():
     general = ("General Information\n"
                "-------------------\n"
                "Python version: {}\n"
-               "Paule version: {}\n\n").format(sys.version.split()[0], __version__)
+               "Articubench version: {}\n\n").format(sys.version.split()[0], __version__)
 
     uname = os.uname()
     osinfo = ("Operating System\n"

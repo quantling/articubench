@@ -9,6 +9,8 @@
 
    quickstart
    installation
+   data
+   scores
    development
    articubench
    about

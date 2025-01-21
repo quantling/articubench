@@ -47,8 +47,7 @@ from . import util
 
 paule_util.download_pretrained_weights()
 
-#DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = util.DEVICE
 DIR = os.path.dirname(__file__)
 LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
 LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))

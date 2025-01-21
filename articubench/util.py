@@ -11,7 +11,7 @@ import librosa
 import torch.nn
 import pandas as pd
 import torch
-
+from scipy.interpolate import PchipInterpolator
 
 # load vocaltractlab binary
 DIR = os.path.dirname(__file__)
@@ -833,3 +833,15 @@ def interpolate(length: int, array: np.array):
         return an interpolatet numpy array of length "length". '''
     
     return PchipInterpolator(np.linspace(0, 1, len(array)), array)(np.linspace(0, 1, length))
+
+def align_ema(model_ema: np.array, reference_ema: np.array) -> tuple:
+    """Align EMA sequences by interpolating shorter to longer length for our model and reference EMA.
+       Since usually reference EMA are a little shorter."""
+    target_len = max(len(model_ema), len(reference_ema))
+    
+    if len(model_ema) == len(reference_ema):
+        return model_ema, reference_ema
+    elif len(model_ema) < target_len:
+        return interpolate(target_len, model_ema), reference_ema
+    else:
+        return model_ema, interpolate(target_len, reference_ema)

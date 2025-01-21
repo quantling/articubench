@@ -95,10 +95,9 @@ def load_small():
     #we drop rows which have length 32 and less since paule creates length 34
     data.drop(data[data['len_cp'] <= 32].index, inplace=True)
     #we also drop ref_emas for noow, since i dont know why they have the wrong shape
-    data['reference_ema_TT'] = None
-    data['reference_ema_TB'] = None
+    #data['reference_ema_TT'] = None
+    #data['reference_ema_TB'] = None
     tongue_heights = data.reference_cp.progress_apply(lambda cp: tongue_height_from_cps(cp) if cp is not None else None)
-    print('generated tongue heights')
     data['emas'] = data.reference_cp.progress_apply(lambda cp: cps_to_ema(cp) if cp is not None else None)
     emas_tt = data['emas'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy() if emas is not None else None)
     emas_tb = data['emas'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy() if emas is not None else None)

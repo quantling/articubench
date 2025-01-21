@@ -14,7 +14,7 @@ from tqdm import tqdm
 import torch
 from sklearn.metrics.pairwise import euclidean_distances
 
-from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor, cps_to_ema
+from .util import speak, librosa_melspec, normalize_mel_librosa, get_vel_acc_jerk, RMSE, mel_to_tensor, cps_to_ema, align_ema
 from .eval_tongue_height import tongue_height_from_cps
 from .embedding_models import MelEmbeddingModel
 from .control_models import synth_baseline_schwa
@@ -138,15 +138,16 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
     else:
         data = preloaded_data.copy()
 
-    # generate Baseline:
-    print("generating cps")
 
 
     if _no_data_in_column('cps_baseline', data):
+        logging.info(f'Calculating baseline cps') 
         data['cps_baseline'] = data.len_cp.progress_apply(synth_baseline_schwa)
+    
     
     if 'copy-synthesis' in tasks:
         if _no_data_in_column('cps_copy-synthesis', data):
+            logging.info(f'Calculating copy-synthesis cps')    
             data['cps_copy-synthesis'] = data.progress_apply(
                     lambda row: model(row['len_cp'],
                                       target_audio=row['target_sig'],
@@ -155,6 +156,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             
     if 'semantic-acoustic' in tasks:
         if _no_data_in_column('cps_semantic-acoustic', data):
+            logging.info(f'Calculating semantic-acoustic cps') 
             data['cps_semantic-acoustic'] = data.progress_apply(
                     lambda row: model(row['len_cp'],
                                       target_audio=row['target_sig'],
@@ -164,6 +166,7 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
             
     if 'semantic-only' in tasks:
         if _no_data_in_column('cps_semantic-only', data):
+            logging.info(f'Calculating semantic-only cps') 
             data['cps_semantic-only'] = data.progress_apply(
                     lambda row: model(row['len_cp'],
                                       target_semantic_vector=row['target_semantic_vector']),
@@ -211,8 +214,8 @@ def score(model, *, preloaded_data=None, precomputed_scores=None, size='tiny', t
                 data[f'ema_TB_{task}'] = data[f'ema_points_{task}'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy())
 
         global BASELINE_EMA
-        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(row['ema_TT_baseline'], row['reference_ema_TT']), axis=1)
-                        + data.progress_apply(lambda row: RMSE(row['ema_TB_baseline'], row['reference_ema_TB']), axis=1))
+        BASELINE_EMA = np.mean(data.progress_apply(lambda row: RMSE(*align_ema(row['ema_TT_baseline'], row['reference_ema_TT'])), axis=1)
+                        + data.progress_apply(lambda row: RMSE(*align_ema(row['ema_TB_baseline'], row['reference_ema_TB'])), axis=1))
 
 
     # calculate log-mel spectrograms
@@ -336,8 +339,8 @@ def score_tongue_height(data, task):
 
 
 def score_ema(data, task):
-    s_ema = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(row[f'ema_TT_{task}'], row['reference_ema_TT']), axis=1)
-                        + data.progress_apply(lambda row: RMSE(row[f'ema_TB_{task}'], row['reference_ema_TB']), axis=1))
+    s_ema = 100 * (1 - np.mean(data.progress_apply(lambda row: RMSE(*align_ema(row[f'ema_TT_{task}'], row['reference_ema_TT'])), axis=1)
+                        + data.progress_apply(lambda row: RMSE(*align_ema(row[f'ema_TB_{task}'], row['reference_ema_TB'])), axis=1))
                         / BASELINE_EMA)
     return s_ema
 

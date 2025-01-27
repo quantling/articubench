@@ -16,80 +16,209 @@ import pandas as pd
 import torch
 import requests
 from scipy.interpolate import PchipInterpolator
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # load vocaltractlab binary
 DIR = os.path.dirname(__file__)
-PREFIX = 'lib'
-SUFFIX = ''
-if sys.platform.startswith('linux'):
-    SUFFIX = '.so'
-elif sys.platform.startswith('win32'):
-    PREFIX = ''
-    SUFFIX = '.dll'
-elif sys.platform.startswith('darwin'):
-    SUFFIX = '.dylib'
-VTL = ctypes.cdll.LoadLibrary(os.path.join(DIR,f'vocaltractlab_api/{PREFIX}VocalTractLabApi{SUFFIX}'))
+PREFIX = "lib"
+SUFFIX = ""
+if sys.platform.startswith("linux"):
+    SUFFIX = ".so"
+elif sys.platform.startswith("win32"):
+    PREFIX = ""
+    SUFFIX = ".dll"
+elif sys.platform.startswith("darwin"):
+    SUFFIX = ".dylib"
+VTL = ctypes.cdll.LoadLibrary(
+    os.path.join(DIR, f"vocaltractlab_api/{PREFIX}VocalTractLabApi{SUFFIX}")
+)
 # initialize vtl
-speaker_file_name = ctypes.c_char_p(os.path.join(DIR, 'vocaltractlab_api/JD3.speaker').encode())
+speaker_file_name = ctypes.c_char_p(
+    os.path.join(DIR, "vocaltractlab_api/JD3.speaker").encode()
+)
 failure = VTL.vtlInitialize(speaker_file_name)
 if failure != 0:
-    raise ValueError('Error in vtlInitialize! Errorcode: %i' % failure)
+    raise ValueError("Error in vtlInitialize! Errorcode: %i" % failure)
 del PREFIX, SUFFIX, speaker_file_name, failure
 # get version / compile date
-VERSION = ctypes.c_char_p(b' ' * 64)
+VERSION = ctypes.c_char_p(b" " * 64)
 VTL.vtlGetVersion(VERSION)
 print('Version of the VocalTractLab library: "%s"' % VERSION.value.decode())
 del VERSION
 
 
 # This should be done on all cp_deltas
-#np.max(np.stack((np.abs(np.min(delta, axis=0)), np.max(delta, axis=0))), axis=0)
-#np.max(np.stack((np.abs(np.min(cp_param, axis=0)), np.max(cp_param, axis=0))), axis=0)
+# np.max(np.stack((np.abs(np.min(delta, axis=0)), np.max(delta, axis=0))), axis=0)
+# np.max(np.stack((np.abs(np.min(cp_param, axis=0)), np.max(cp_param, axis=0))), axis=0)
 
 # absolute value from max / min
 
-#Vocal tract parameters: "HX HY JX JA LP LD VS VO TCX TCY TTX TTY TBX TBY TRX TRY TS1 TS2 TS3"
-#Glottis parameters: "f0 pressure x_bottom x_top chink_area lag rel_amp double_pulsing pulse_skewness flutter aspiration_strength "
+# Vocal tract parameters: "HX HY JX JA LP LD VS VO TCX TCY TTX TTY TBX TBY TRX TRY TS1 TS2 TS3"
+# Glottis parameters: "f0 pressure x_bottom x_top chink_area lag rel_amp double_pulsing pulse_skewness flutter aspiration_strength "
 
 
-cp_means = np.array([ 5.3000e-01, -5.0800e+00, -3.0000e-02, -3.7300e+00,  7.0000e-02,
-                      7.3000e-01,  4.8000e-01, -5.0000e-02,  9.6000e-01, -1.5800e+00,
-                      4.4600e+00, -9.3000e-01,  2.9900e+00, -5.0000e-02, -1.4600e+00,
-                     -2.2900e+00,  2.3000e-01,  1.2000e-01,  1.2000e-01,  1.0720e+02,
-                      4.1929e+03,  3.0000e-02,  3.0000e-02,  6.0000e-02,  1.2200e+00,
-                      8.4000e-01,  5.0000e-02,  0.0000e+00,  2.5000e+01, -1.0000e+01])
-cp_stds = np.array([1.70000e-01, 4.00000e-01, 4.00000e-02, 6.30000e-01, 1.20000e-01,
-                    2.20000e-01, 2.20000e-01, 9.00000e-02, 4.90000e-01, 3.10000e-01,
-                    3.80000e-01, 3.70000e-01, 3.50000e-01, 3.50000e-01, 4.60000e-01,
-                    3.80000e-01, 6.00000e-02, 1.00000e-01, 1.80000e-01, 9.86000e+00,
-                    3.29025e+03, 2.00000e-02, 2.00000e-02, 1.00000e-02, 0.00100e+00,
-                    2.00000e-01, 0.00100e+00, 0.00100e+00, 0.00100e+00, 0.00100e+00])
+cp_means = np.array(
+    [
+        5.3000e-01,
+        -5.0800e00,
+        -3.0000e-02,
+        -3.7300e00,
+        7.0000e-02,
+        7.3000e-01,
+        4.8000e-01,
+        -5.0000e-02,
+        9.6000e-01,
+        -1.5800e00,
+        4.4600e00,
+        -9.3000e-01,
+        2.9900e00,
+        -5.0000e-02,
+        -1.4600e00,
+        -2.2900e00,
+        2.3000e-01,
+        1.2000e-01,
+        1.2000e-01,
+        1.0720e02,
+        4.1929e03,
+        3.0000e-02,
+        3.0000e-02,
+        6.0000e-02,
+        1.2200e00,
+        8.4000e-01,
+        5.0000e-02,
+        0.0000e00,
+        2.5000e01,
+        -1.0000e01,
+    ]
+)
+cp_stds = np.array(
+    [
+        1.70000e-01,
+        4.00000e-01,
+        4.00000e-02,
+        6.30000e-01,
+        1.20000e-01,
+        2.20000e-01,
+        2.20000e-01,
+        9.00000e-02,
+        4.90000e-01,
+        3.10000e-01,
+        3.80000e-01,
+        3.70000e-01,
+        3.50000e-01,
+        3.50000e-01,
+        4.60000e-01,
+        3.80000e-01,
+        6.00000e-02,
+        1.00000e-01,
+        1.80000e-01,
+        9.86000e00,
+        3.29025e03,
+        2.00000e-02,
+        2.00000e-02,
+        1.00000e-02,
+        0.00100e00,
+        2.00000e-01,
+        0.00100e00,
+        0.00100e00,
+        0.00100e00,
+        0.00100e00,
+    ]
+)
 
-cp_theoretical_means = np.array([ 5.00000e-01, -4.75000e+00, -2.50000e-01, -3.50000e+00,
-        0.00000e+00,  1.00000e+00,  5.00000e-01,  4.50000e-01,
-        5.00000e-01, -1.00000e+00,  3.50000e+00, -2.50000e-01,
-        5.00000e-01,  1.00000e+00, -1.00000e+00, -3.00000e+00,
-        5.00000e-01,  5.00000e-01,  0.00000e+00,  3.20000e+02,
-        1.00000e+04,  1.25000e-01,  1.25000e-01,  0.00000e+00,
-        1.57075e+00,  0.00000e+00,  5.00000e-01,  0.00000e+00,
-        5.00000e+01, -2.00000e+01])
+cp_theoretical_means = np.array(
+    [
+        5.00000e-01,
+        -4.75000e00,
+        -2.50000e-01,
+        -3.50000e00,
+        0.00000e00,
+        1.00000e00,
+        5.00000e-01,
+        4.50000e-01,
+        5.00000e-01,
+        -1.00000e00,
+        3.50000e00,
+        -2.50000e-01,
+        5.00000e-01,
+        1.00000e00,
+        -1.00000e00,
+        -3.00000e00,
+        5.00000e-01,
+        5.00000e-01,
+        0.00000e00,
+        3.20000e02,
+        1.00000e04,
+        1.25000e-01,
+        1.25000e-01,
+        0.00000e00,
+        1.57075e00,
+        0.00000e00,
+        5.00000e-01,
+        0.00000e00,
+        5.00000e01,
+        -2.00000e01,
+    ]
+)
 
-cp_theoretical_stds = np.array([5.00000e-01, 1.25000e+00, 2.50000e-01, 3.50000e+00, 1.00000e+00,
-       3.00000e+00, 5.00000e-01, 5.50000e-01, 3.50000e+00, 2.00000e+00,
-       2.00000e+00, 2.75000e+00, 3.50000e+00, 4.00000e+00, 3.00000e+00,
-       3.00000e+00, 5.00000e-01, 5.00000e-01, 1.00000e+00, 2.80000e+02,
-       1.00000e+04, 1.75000e-01, 1.75000e-01, 2.50000e-01, 1.57075e+00,
-       1.00000e+00, 5.00000e-01, 5.00000e-01, 5.00000e+01, 2.00000e+01])
+cp_theoretical_stds = np.array(
+    [
+        5.00000e-01,
+        1.25000e00,
+        2.50000e-01,
+        3.50000e00,
+        1.00000e00,
+        3.00000e00,
+        5.00000e-01,
+        5.50000e-01,
+        3.50000e00,
+        2.00000e00,
+        2.00000e00,
+        2.75000e00,
+        3.50000e00,
+        4.00000e00,
+        3.00000e00,
+        3.00000e00,
+        5.00000e-01,
+        5.00000e-01,
+        1.00000e00,
+        2.80000e02,
+        1.00000e04,
+        1.75000e-01,
+        1.75000e-01,
+        2.50000e-01,
+        1.57075e00,
+        1.00000e00,
+        5.00000e-01,
+        5.00000e-01,
+        5.00000e01,
+        2.00000e01,
+    ]
+)
 
 
 def librosa_melspec(wav, sample_rate):
-    wav = librosa.resample(wav, orig_sr=sample_rate, target_sr=44100,
-            res_type='kaiser_best', fix=True, scale=False)
-    melspec = librosa.feature.melspectrogram(y=wav, n_fft=1024, hop_length=220,
-            n_mels=60, sr=44100, power=1.0, fmin=10, fmax=12000)
+    wav = librosa.resample(
+        wav,
+        orig_sr=sample_rate,
+        target_sr=44100,
+        res_type="kaiser_best",
+        fix=True,
+        scale=False,
+    )
+    melspec = librosa.feature.melspectrogram(
+        y=wav,
+        n_fft=1024,
+        hop_length=220,
+        n_mels=60,
+        sr=44100,
+        power=1.0,
+        fmin=10,
+        fmax=12000,
+    )
     melspec_db = librosa.amplitude_to_db(melspec, ref=0.15)
-    return np.array(melspec_db.T, order='C')
+    return np.array(melspec_db.T, order="C")
 
 
 def normalize_cp(cp):
@@ -114,20 +243,24 @@ def inv_normalize_mel_librosa(norm_mel):
 
 
 def read_cp(filename):
-    with open(filename, 'rt') as cp_file:
+    with open(filename, "rt") as cp_file:
         # skip first 6 lines
         for _ in range(6):
             cp_file.readline()
         glottis_model = cp_file.readline().strip()
-        if glottis_model != 'Geometric glottis':
+        if glottis_model != "Geometric glottis":
             print(glottis_model)
-            raise ValueError(f'glottis model is not "Geometric glottis" in file {filename}')
+            raise ValueError(
+                f'glottis model is not "Geometric glottis" in file {filename}'
+            )
         n_states = int(cp_file.readline().strip())
         cp_param = np.zeros((n_states, 19 + 11))
         for ii, line in enumerate(cp_file):
             kk = ii // 2
             if kk >= n_states:
-                raise ValueError(f'more states saved in file {filename} than claimed in the beginning')
+                raise ValueError(
+                    f"more states saved in file {filename} than claimed in the beginning"
+                )
             # even numbers are glottis params
             elif ii % 2 == 0:
                 glottis_param = line.strip()
@@ -162,26 +295,32 @@ def speak(cp_param):
     number_audio_samples_per_tract_state = ctypes.c_int(0)
     internal_sampling_rate = ctypes.c_double(0)
 
-    VTL.vtlGetConstants(ctypes.byref(audio_sampling_rate),
-                        ctypes.byref(number_tube_sections),
-                        ctypes.byref(number_vocal_tract_parameters),
-                        ctypes.byref(number_glottis_parameters),
-                        ctypes.byref(number_audio_samples_per_tract_state),
-                        ctypes.byref(internal_sampling_rate))
+    VTL.vtlGetConstants(
+        ctypes.byref(audio_sampling_rate),
+        ctypes.byref(number_tube_sections),
+        ctypes.byref(number_vocal_tract_parameters),
+        ctypes.byref(number_glottis_parameters),
+        ctypes.byref(number_audio_samples_per_tract_state),
+        ctypes.byref(internal_sampling_rate),
+    )
 
     assert audio_sampling_rate.value == 44100
     assert number_vocal_tract_parameters.value == 19
     assert number_glottis_parameters.value == 11
 
     number_frames = cp_param.shape[0]
-    frame_steps = 110 #2.5 ms
+    frame_steps = 110  # 2.5 ms
     # within first parenthesis type definition, second initialisation
     # 2000 samples more in the audio signal for safety
-    audio = (ctypes.c_double * int((number_frames-1) * frame_steps + 2000))()
+    audio = (ctypes.c_double * int((number_frames - 1) * frame_steps + 2000))()
 
     # init the arrays
-    tract_params = (ctypes.c_double * (number_frames * number_vocal_tract_parameters.value))()
-    glottis_params = (ctypes.c_double * (number_frames * number_glottis_parameters.value))()
+    tract_params = (
+        ctypes.c_double * (number_frames * number_vocal_tract_parameters.value)
+    )()
+    glottis_params = (
+        ctypes.c_double * (number_frames * number_glottis_parameters.value)
+    )()
 
     # fill in data
     tmp = np.ascontiguousarray(cp_param[:, 0:19])
@@ -197,29 +336,31 @@ def speak(cp_param):
     # Reset time-domain synthesis
     failure = VTL.vtlSynthesisReset()
     if failure != 0:
-        raise ValueError(f'Error in vtlSynthesisReset! Errorcode: {failure}')
+        raise ValueError(f"Error in vtlSynthesisReset! Errorcode: {failure}")
 
     # Call the synthesis function. It may calculate a few seconds.
     failure = VTL.vtlSynthBlock(
-                    ctypes.byref(tract_params),  # input
-                    ctypes.byref(glottis_params),  # input
-                    number_frames,
-                    frame_steps,
-                    ctypes.byref(audio),  # output
-                    0)
+        ctypes.byref(tract_params),  # input
+        ctypes.byref(glottis_params),  # input
+        number_frames,
+        frame_steps,
+        ctypes.byref(audio),  # output
+        0,
+    )
     if failure != 0:
-        raise ValueError('Error in vtlSynthBlock! Errorcode: %i' % failure)
+        raise ValueError("Error in vtlSynthBlock! Errorcode: %i" % failure)
 
     return (np.array(audio[:-2000]), 44100)
 
 
-ARTICULATOR = {0: 'vocal folds',
-               1: 'tongue',
-               2: 'lower incisors',
-               3: 'lower lip',
-               4: 'other articulator',
-               5: 'num articulators',
-               }
+ARTICULATOR = {
+    0: "vocal folds",
+    1: "tongue",
+    2: "lower incisors",
+    3: "lower lip",
+    4: "other articulator",
+    5: "num articulators",
+}
 
 
 def speak_and_extract_tube_information(cp_param):
@@ -245,12 +386,14 @@ def speak_and_extract_tube_information(cp_param):
     number_audio_samples_per_tract_state = ctypes.c_int(0)
     internal_sampling_rate = ctypes.c_double(0)
 
-    VTL.vtlGetConstants(ctypes.byref(audio_sampling_rate),
-                        ctypes.byref(number_tube_sections),
-                        ctypes.byref(number_vocal_tract_parameters),
-                        ctypes.byref(number_glottis_parameters),
-                        ctypes.byref(number_audio_samples_per_tract_state),
-                        ctypes.byref(internal_sampling_rate))
+    VTL.vtlGetConstants(
+        ctypes.byref(audio_sampling_rate),
+        ctypes.byref(number_tube_sections),
+        ctypes.byref(number_vocal_tract_parameters),
+        ctypes.byref(number_glottis_parameters),
+        ctypes.byref(number_audio_samples_per_tract_state),
+        ctypes.byref(internal_sampling_rate),
+    )
 
     assert audio_sampling_rate.value == 44100
     assert number_vocal_tract_parameters.value == 19
@@ -262,8 +405,14 @@ def speak_and_extract_tube_information(cp_param):
     audio = [(ctypes.c_double * int(frame_steps))() for _ in range(number_frames - 1)]
 
     # init the arrays
-    tract_params = [(ctypes.c_double * (number_vocal_tract_parameters.value))() for _ in range(number_frames)]
-    glottis_params = [(ctypes.c_double * (number_glottis_parameters.value))() for _ in range(number_frames)]
+    tract_params = [
+        (ctypes.c_double * (number_vocal_tract_parameters.value))()
+        for _ in range(number_frames)
+    ]
+    glottis_params = [
+        (ctypes.c_double * (number_glottis_parameters.value))()
+        for _ in range(number_frames)
+    ]
 
     # fill in data
     tmp = np.ascontiguousarray(cp_param[:, 0:19])
@@ -287,47 +436,59 @@ def speak_and_extract_tube_information(cp_param):
     # Reset time-domain synthesis
     failure = VTL.vtlSynthesisReset()
     if failure != 0:
-        raise ValueError(f'Error in vtlSynthesisReset! Errorcode: {failure}')
+        raise ValueError(f"Error in vtlSynthesisReset! Errorcode: {failure}")
 
     for i in range(number_frames):
         if i == 0:
-            failure = VTL.vtlSynthesisAddTract(0, ctypes.byref(audio[0]),
-                                               ctypes.byref(tract_params[i]),
-                                               ctypes.byref(glottis_params[i]))
+            failure = VTL.vtlSynthesisAddTract(
+                0,
+                ctypes.byref(audio[0]),
+                ctypes.byref(tract_params[i]),
+                ctypes.byref(glottis_params[i]),
+            )
         else:
-            failure = VTL.vtlSynthesisAddTract(frame_steps, ctypes.byref(audio[i-1]),
-                                               ctypes.byref(tract_params[i]),
-
-                                               ctypes.byref(glottis_params[i]))
+            failure = VTL.vtlSynthesisAddTract(
+                frame_steps,
+                ctypes.byref(audio[i - 1]),
+                ctypes.byref(tract_params[i]),
+                ctypes.byref(glottis_params[i]),
+            )
         if failure != 0:
-            raise ValueError('Error in vtlSynthesisAddTract! Errorcode: %i' % failure)
+            raise ValueError("Error in vtlSynthesisAddTract! Errorcode: %i" % failure)
 
         # export
-        failure = VTL.vtlTractToTube(ctypes.byref(tract_params[i]),
-                                     ctypes.byref(tube_length_cm[i]),
-                                     ctypes.byref(tube_area_cm2[i]),
-                                     ctypes.byref(tube_articulator[i]),
-                                     ctypes.byref(incisor_pos_cm[i]),
-                                     ctypes.byref(tongue_tip_side_elevation[i]),
-                                     ctypes.byref(velum_opening_cm2[i]))
+        failure = VTL.vtlTractToTube(
+            ctypes.byref(tract_params[i]),
+            ctypes.byref(tube_length_cm[i]),
+            ctypes.byref(tube_area_cm2[i]),
+            ctypes.byref(tube_articulator[i]),
+            ctypes.byref(incisor_pos_cm[i]),
+            ctypes.byref(tongue_tip_side_elevation[i]),
+            ctypes.byref(velum_opening_cm2[i]),
+        )
 
         if failure != 0:
-            raise ValueError('Error in vtlTractToTube! Errorcode: %i' % failure)
+            raise ValueError("Error in vtlTractToTube! Errorcode: %i" % failure)
 
     audio = np.ascontiguousarray(audio)
     audio.shape = ((number_frames - 1) * frame_steps,)
 
-    arti = [[ARTICULATOR[sec] for sec in list(tube_articulator_i)] for tube_articulator_i in list(tube_articulator)]
+    arti = [
+        [ARTICULATOR[sec] for sec in list(tube_articulator_i)]
+        for tube_articulator_i in list(tube_articulator)
+    ]
     incisor_pos_cm = [x.value for x in incisor_pos_cm]
     tongue_tip_side_elevation = [x.value for x in tongue_tip_side_elevation]
     velum_opening_cm2 = [x.value for x in velum_opening_cm2]
 
-    tube_info = {"tube_length_cm": np.array(tube_length_cm),
-                 "tube_area_cm2": np.array(tube_area_cm2),
-                 "tube_articulator": np.array(arti),
-                 "incisor_pos_cm": np.array(incisor_pos_cm),
-                 "tongue_tip_side_elevation": np.array(tongue_tip_side_elevation),
-                 "velum_opening_cm2": np.array(velum_opening_cm2)}
+    tube_info = {
+        "tube_length_cm": np.array(tube_length_cm),
+        "tube_area_cm2": np.array(tube_area_cm2),
+        "tube_articulator": np.array(arti),
+        "incisor_pos_cm": np.array(incisor_pos_cm),
+        "tongue_tip_side_elevation": np.array(tongue_tip_side_elevation),
+        "velum_opening_cm2": np.array(velum_opening_cm2),
+    }
 
     return (audio, 44100, tube_info)
 
@@ -344,9 +505,9 @@ def audio_padding(sig, samplerate, winlen=0.010):
     winlen : float
         the window size in seconds
     """
-    pad = int(np.ceil(samplerate * winlen)/2)
+    pad = int(np.ceil(samplerate * winlen) / 2)
     z = np.zeros(pad)
-    pad_signal = np.concatenate((z,sig,z))
+    pad_signal = np.concatenate((z, sig, z))
     return pad_signal
 
 
@@ -365,11 +526,18 @@ def mel_to_sig(mel, mel_min=0.0):
     """
     mel = mel + mel_min
     mel = inv_normalize_mel_librosa(mel)
-    mel = np.array(mel.T, order='C')
+    mel = np.array(mel.T, order="C")
     mel = librosa.db_to_amplitude(mel, ref=0.15)
-    sig = librosa.feature.inverse.mel_to_audio(mel, sr=44100, n_fft=1024,
-                                             hop_length=220, win_length=1024,
-                                             power=1.0, fmin=10, fmax=12000)
+    sig = librosa.feature.inverse.mel_to_audio(
+        mel,
+        sr=44100,
+        n_fft=1024,
+        hop_length=220,
+        win_length=1024,
+        power=1.0,
+        fmin=10,
+        fmax=12000,
+    )
     # there are always 110 data points missing compared to the speak function using VTL
     # add 55 zeros to the beginning and the end
     sig = np.concatenate((np.zeros(55), sig, np.zeros(55)))
@@ -383,23 +551,23 @@ def plot_cp(cp, file_name):
     ax3 = fig.add_axes([0.1, 0.05, 0.8, 0.3], sharex=ax1, sharey=ax1)
 
     for ii in range(10):
-        ax1.plot(cp[:, ii], label=f'param{ii:0d}')
+        ax1.plot(cp[:, ii], label=f"param{ii:0d}")
     ax1.legend()
     for ii in range(10, 20):
-        ax2.plot(cp[:, ii], label=f'param{ii:0d}')
+        ax2.plot(cp[:, ii], label=f"param{ii:0d}")
     ax2.legend()
     for ii in range(20, 30):
-        ax3.plot(cp[:, ii], label=f'param{ii:0d}')
+        ax3.plot(cp[:, ii], label=f"param{ii:0d}")
     ax3.legend()
     fig.savefig(file_name, dpi=300)
-    plt.close('all')
+    plt.close("all")
 
 
 def plot_mel(mel, file_name):
     fig = plt.figure(figsize=(10, 6))
-    plt.imshow(mel.T, aspect='equal', vmin=-5, vmax=20)
+    plt.imshow(mel.T, aspect="equal", vmin=-5, vmax=20)
     fig.savefig(file_name, dpi=300)
-    plt.close('all')
+    plt.close("all")
 
 
 def stereo_to_mono(wave, which="both"):
@@ -420,7 +588,7 @@ def stereo_to_mono(wave, which="both"):
         return wave[:, 0]
     if which == "right":
         return wave[:, 1]
-    return (wave[:, 0] + wave[:, 1])/2
+    return (wave[:, 0] + wave[:, 1]) / 2
 
 
 def pad_same_to_even_seq_length(array):
@@ -433,11 +601,11 @@ def pad_same_to_even_seq_length(array):
 def half_seq_by_average_pooling(seq):
     if len(seq) % 2:
         seq = pad_same_to_even_seq_length(seq)
-    half_seq = (seq[::2,:] + seq[1::2,:])/2
+    half_seq = (seq[::2, :] + seq[1::2, :]) / 2
     return half_seq
 
 
-def export_svgs(cps, path='svgs/', hop_length=5):
+def export_svgs(cps, path="svgs/", hop_length=5):
     """
     hop_length == 5 : roughly 80 frames per second
     hop_length == 16 : roughly 25 frames per second
@@ -450,7 +618,7 @@ def export_svgs(cps, path='svgs/', hop_length=5):
         tract_params = (ctypes.c_double * 19)()
         tract_params[:] = cps[jj, :n_tract_parameter]
 
-        file_name = os.path.join(path, f'tract{ii:05d}.svg')
+        file_name = os.path.join(path, f"tract{ii:05d}.svg")
         file_name = ctypes.c_char_p(file_name.encode())
 
         if not os.path.exists(path):
@@ -468,7 +636,10 @@ class RMSELoss(torch.nn.Module):
     def forward(self, yhat, y):
         loss = torch.sqrt(self.mse(yhat, y) + self.eps)
         return loss
+
+
 rmse_loss = RMSELoss(eps=0)
+
 
 def RMSE(x1, x2):
     if x1 is None or x2 is None:
@@ -476,12 +647,14 @@ def RMSE(x1, x2):
     rmse = rmse_loss(torch.from_numpy(x1), torch.from_numpy(x2))
     return rmse.item()
 
+
 def get_vel_acc_jerk(trajectory, *, lag=1):
     """returns (velocity, acceleration, jerk) tuple"""
     velocity = (trajectory[lag:, :] - trajectory[:-lag, :]) / lag
     acc = (velocity[1:, :] - velocity[:-1, :]) / 1.0
     jerk = (acc[1:, :] - acc[:-1, :]) / 1.0
     return velocity, acc, jerk
+
 
 def cp_trajacetory_loss(Y_hat, tgts):
     """
@@ -503,9 +676,21 @@ def cp_trajacetory_loss(Y_hat, tgts):
     Y_hat_velocity4, Y_hat_acceleration4, Y_hat_jerk4 = get_vel_acc_jerk(Y_hat, lag=4)
 
     pos_loss = rmse_loss(Y_hat, tgts)
-    vel_loss = rmse_loss(Y_hat_velocity, velocity) + rmse_loss(Y_hat_velocity2, velocity2) + rmse_loss(Y_hat_velocity4, velocity4)
-    jerk_loss = rmse_loss(Y_hat_jerk, jerk) + rmse_loss(Y_hat_jerk2, jerk2) + rmse_loss(Y_hat_jerk4, jerk4)
-    acc_loss = rmse_loss(Y_hat_acceleration, acc) + rmse_loss(Y_hat_acceleration2, acc2) + rmse_loss(Y_hat_acceleration4, acc4)
+    vel_loss = (
+        rmse_loss(Y_hat_velocity, velocity)
+        + rmse_loss(Y_hat_velocity2, velocity2)
+        + rmse_loss(Y_hat_velocity4, velocity4)
+    )
+    jerk_loss = (
+        rmse_loss(Y_hat_jerk, jerk)
+        + rmse_loss(Y_hat_jerk2, jerk2)
+        + rmse_loss(Y_hat_jerk4, jerk4)
+    )
+    acc_loss = (
+        rmse_loss(Y_hat_acceleration, acc)
+        + rmse_loss(Y_hat_acceleration2, acc2)
+        + rmse_loss(Y_hat_acceleration4, acc4)
+    )
 
     loss = pos_loss + vel_loss + acc_loss + jerk_loss
     return loss, pos_loss, vel_loss, acc_loss, jerk_loss
@@ -554,8 +739,13 @@ def pad_batch_online(lens, data_to_pad, device="cpu", with_onset_dim=False):
         Tensors containing the padded and stacked to one batch
     """
     max_len = int(max(lens))
-    padded_data = torch.stack(list(data_to_pad.apply(
-        lambda x: add_and_pad(x, max_len, with_onset_dim=with_onset_dim)))).to(device)
+    padded_data = torch.stack(
+        list(
+            data_to_pad.apply(
+                lambda x: add_and_pad(x, max_len, with_onset_dim=with_onset_dim)
+            )
+        )
+    ).to(device)
 
     return padded_data
 
@@ -588,12 +778,14 @@ def cps_to_ema_and_mesh(cps, file_prefix, *, path=""):
     number_audio_samples_per_tract_state = ctypes.c_int(0)
     internal_sampling_rate = ctypes.c_double(0)
 
-    VTL.vtlGetConstants(ctypes.byref(audio_sampling_rate),
-                        ctypes.byref(number_tube_sections),
-                        ctypes.byref(number_vocal_tract_parameters),
-                        ctypes.byref(number_glottis_parameters),
-                        ctypes.byref(number_audio_samples_per_tract_state),
-                        ctypes.byref(internal_sampling_rate))
+    VTL.vtlGetConstants(
+        ctypes.byref(audio_sampling_rate),
+        ctypes.byref(number_tube_sections),
+        ctypes.byref(number_vocal_tract_parameters),
+        ctypes.byref(number_glottis_parameters),
+        ctypes.byref(number_audio_samples_per_tract_state),
+        ctypes.byref(internal_sampling_rate),
+    )
 
     assert audio_sampling_rate.value == 44100
     assert number_vocal_tract_parameters.value == 19
@@ -602,8 +794,12 @@ def cps_to_ema_and_mesh(cps, file_prefix, *, path=""):
     number_frames = cps.shape[0]
 
     # init the arrays
-    tract_params = (ctypes.c_double * (number_frames * number_vocal_tract_parameters.value))()
-    glottis_params = (ctypes.c_double * (number_frames * number_glottis_parameters.value))()
+    tract_params = (
+        ctypes.c_double * (number_frames * number_vocal_tract_parameters.value)
+    )()
+    glottis_params = (
+        ctypes.c_double * (number_frames * number_glottis_parameters.value)
+    )()
 
     # fill in data
     tmp = np.ascontiguousarray(cps[:, 0:19])
@@ -621,19 +817,29 @@ def cps_to_ema_and_mesh(cps, file_prefix, *, path=""):
     surf[:] = np.array([16, 16, 16])  # 16 = TONGUE
 
     vert = (ctypes.c_int * number_ema_points)()
-    vert[:] = np.array([115, 225, 335])  # Tongue Back (TB) = 115; Tongue Middle (TM) = 225; Tongue Tip (TT) = 335
+    vert[:] = np.array(
+        [115, 225, 335]
+    )  # Tongue Back (TB) = 115; Tongue Middle (TM) = 225; Tongue Tip (TT) = 335
 
     if not os.path.exists(path):
         os.mkdir(path)
 
     failure = VTL.vtlTractSequenceToEmaAndMesh(
-            ctypes.byref(tract_params), ctypes.byref(glottis_params),
-            number_vocal_tract_parameters, number_glottis_parameters,
-            number_frames, number_ema_points,
-            ctypes.byref(surf), ctypes.byref(vert),
-            path.encode(), file_prefix.encode())
+        ctypes.byref(tract_params),
+        ctypes.byref(glottis_params),
+        number_vocal_tract_parameters,
+        number_glottis_parameters,
+        number_frames,
+        number_ema_points,
+        ctypes.byref(surf),
+        ctypes.byref(vert),
+        path.encode(),
+        file_prefix.encode(),
+    )
     if failure != 0:
-        raise ValueError('Error in vtlTractSequenceToEmaAndMesh! Errorcode: %i' % failure)
+        raise ValueError(
+            "Error in vtlTractSequenceToEmaAndMesh! Errorcode: %i" % failure
+        )
 
 
 def cps_to_ema(cps):
@@ -652,10 +858,10 @@ def cps_to_ema(cps):
         returns the 3D ema points for different virtual EMA sensors in a
         pandas.DataFrame
     """
-    with tempfile.TemporaryDirectory(prefix='python_articubench_') as path:
-        file_name = 'pyndl_util_ema_export'
+    with tempfile.TemporaryDirectory(prefix="python_articubench_") as path:
+        file_name = "pyndl_util_ema_export"
         cps_to_ema_and_mesh(cps, file_prefix=file_name, path=path)
-        emas = pd.read_table(os.path.join(path, f"{file_name}-ema.txt"), sep=' ')
+        emas = pd.read_table(os.path.join(path, f"{file_name}-ema.txt"), sep=" ")
     return emas
 
 
@@ -668,7 +874,7 @@ def mel_to_tensor(mel):
 
 
 def round_up_to_even(f):
-    return math.ceil(f / 2.) * 2
+    return math.ceil(f / 2.0) * 2
 
 
 def rigid_transform_3d(A, B):
@@ -706,7 +912,7 @@ def rigid_transform_3d(A, B):
     H = Am @ np.transpose(Bm)
 
     # sanity check
-    #if linalg.matrix_rank(H) < 3:
+    # if linalg.matrix_rank(H) < 3:
     #    raise ValueError("rank of H = {}, expecting 3".format(linalg.matrix_rank(H)))
 
     # find rotation
@@ -716,7 +922,7 @@ def rigid_transform_3d(A, B):
     # special reflection case
     if np.linalg.det(R) < 0:
         print("det(R) < R, reflection detected!, correcting for it ...")
-        Vt[2,:] *= -1
+        Vt[2, :] *= -1
         R = Vt.T @ U.T
 
     t = -R @ centroid_A + centroid_B
@@ -752,49 +958,51 @@ def calculate_roll_pitch_yaw(rotation_matrix):
     r31, r32, r33 = rotation_matrix[2, :]
 
     if r31 != 1 and r31 != -1:
-         pitch_1 = -1 * asin(r31)
-         pitch_2 = pi - pitch_1
-         roll_1 = atan2( r32 / cos(pitch_1) , r33 /cos(pitch_1) )
-         roll_2 = atan2( r32 / cos(pitch_2) , r33 /cos(pitch_2) )
-         yaw_1 = atan2( r21 / cos(pitch_1) , r11 / cos(pitch_1) )
-         yaw_2 = atan2( r21 / cos(pitch_2) , r11 / cos(pitch_2) )
+        pitch_1 = -1 * asin(r31)
+        pitch_2 = pi - pitch_1
+        roll_1 = atan2(r32 / cos(pitch_1), r33 / cos(pitch_1))
+        roll_2 = atan2(r32 / cos(pitch_2), r33 / cos(pitch_2))
+        yaw_1 = atan2(r21 / cos(pitch_1), r11 / cos(pitch_1))
+        yaw_2 = atan2(r21 / cos(pitch_2), r11 / cos(pitch_2))
 
-         # IMPORTANT NOTE here, there is more than one solution but we choose
-         # the first for this case for simplicity !
-         # You can insert your own domain logic here on how to handle both
-         # solutions appropriately (see the reference publication link for more
-         # info).
-         pitch = pitch_1
-         roll = roll_1
-         yaw = yaw_1
+        # IMPORTANT NOTE here, there is more than one solution but we choose
+        # the first for this case for simplicity !
+        # You can insert your own domain logic here on how to handle both
+        # solutions appropriately (see the reference publication link for more
+        # info).
+        pitch = pitch_1
+        roll = roll_1
+        yaw = yaw_1
     else:
-         yaw = 0 # anything (we default this to zero)
-         if r31 == -1:
+        yaw = 0  # anything (we default this to zero)
+        if r31 == -1:
             pitch = pi / 2
             roll = yaw + atan2(r12, r13)
-         else:
+        else:
             pitch = -pi / 2
             roll = -1 * yaw + atan2(-1 * r12, -1 * r13)
 
     # convert from radians to degrees
     roll = roll * 180 / pi
     pitch = pitch * 180 / pi
-    yaw = yaw * 180/pi
+    yaw = yaw * 180 / pi
 
-    rxyz_deg = [roll , pitch , yaw]
+    rxyz_deg = [roll, pitch, yaw]
 
     return rxyz_deg
 
 
-
-
-def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15, 16], calculate="raw"):
-    length = np.cumsum(tube_length,axis=1)
+def get_tube_info_stepwise(
+    tube_length, tube_area, steps=[5, 8, 11, 13, 14, 15, 16], calculate="raw"
+):
+    length = np.cumsum(tube_length, axis=1)
     section_per_time = []
     for t, len_ in enumerate(length):
         section = []
         for i, step in enumerate(steps[:-1]):
-            area = tube_area[t,np.where(np.logical_and(len_>=step, len_<=steps[i+1]))]
+            area = tube_area[
+                t, np.where(np.logical_and(len_ >= step, len_ <= steps[i + 1]))
+            ]
             if calculate == "raw":
                 section += [area]
             elif calculate == "mean":
@@ -809,17 +1017,23 @@ def get_tube_info_stepwise(tube_length, tube_area, steps = [5, 8, 11, 13, 14, 15
 
 def download_pretrained_weights(*, skip_if_exists=True, verbose=True):
     package_path = DIR
-    model_weights_path = os.path.join(package_path, 'models')
+    model_weights_path = os.path.join(package_path, "models")
     if os.path.isdir(model_weights_path):
         if skip_if_exists:
             if verbose:
-                print(f"pretrained_models exist already. Skip download. Path is {model_weights_path}")
-                print(f'Version of pretrained weights is "{get_pretrained_weights_version()}"')
-                print('To forcefully download the weights, use: ')
-                print('  `util.download_pretrained_weights(skip_if_exists=False)`')
+                print(
+                    f"pretrained_models exist already. Skip download. Path is {model_weights_path}"
+                )
+                print(
+                    f'Version of pretrained weights is "{get_pretrained_weights_version()}"'
+                )
+                print("To forcefully download the weights, use: ")
+                print("  `util.download_pretrained_weights(skip_if_exists=False)`")
             return
         shutil.rmtree(model_weights_path)
-    zip_file_url = "https://nc.mlcloud.uni-tuebingen.de/index.php/s/EFr8682rnYKYiWz/download"
+    zip_file_url = (
+        "https://nc.mlcloud.uni-tuebingen.de/index.php/s/EFr8682rnYKYiWz/download"
+    )
     if verbose:
         print(f"downloading 50 MB of model weights from {zip_file_url}")
         print(f"saving pretrained weights to {model_weights_path}")
@@ -833,17 +1047,16 @@ def download_pretrained_weights(*, skip_if_exists=True, verbose=True):
 def get_pretrained_weights_version():
     """read and return the version of the pretrained weights, <No version file
     found> if no pretrained weights exist"""
-    version_path = os.path.join(DIR, 'models/version.txt')
+    version_path = os.path.join(DIR, "models/version.txt")
     if not os.path.exists(version_path):
         return f"<No version file found at {version_path}>"
-    with open(version_path, 'rt') as vfile:
+    with open(version_path, "rt") as vfile:
         version = vfile.read().strip()
     return version
 
 
-
 def scale_emas_to_vtl(ema_point):
-    '''Scales one 3d ema point from ja_halt Dataset to approximately scale to the VTL emas.
+    """Scales one 3d ema point from ja_halt Dataset to approximately scale to the VTL emas.
     Firstly converting mm to cm, changing y and z axis and then scaling the points.
     Parameters
     ==========
@@ -853,19 +1066,20 @@ def scale_emas_to_vtl(ema_point):
     =======
     ema_point : np.array
         returns the 3D ema points for different virtual EMA sensors in a
-        pandas.DataFrame'''
-    
+        pandas.DataFrame"""
+
     ema_point = ema_point / 10
 
     ema_point[1], ema_point[2] = ema_point[2], ema_point[1]
 
     ema_point[0] = ema_point[0] + 8
-    ema_point[2] = ema_point[2] - .3
+    ema_point[2] = ema_point[2] - 0.3
 
     return ema_point
 
+
 def interpolate(length: int, array: np.array):
-    '''Interpolates the given array to the given length using scipy's Pchip Interpolator function.
+    """Interpolates the given array to the given length using scipy's Pchip Interpolator function.
     Parameters
     ==========
     length : int
@@ -875,15 +1089,18 @@ def interpolate(length: int, array: np.array):
     Returns
     =======
     array : np.array
-        return an interpolatet numpy array of length "length". '''
-    
-    return PchipInterpolator(np.linspace(0, 1, len(array)), array)(np.linspace(0, 1, length))
+        return an interpolatet numpy array of length "length"."""
+
+    return PchipInterpolator(np.linspace(0, 1, len(array)), array)(
+        np.linspace(0, 1, length)
+    )
+
 
 def align_ema(model_ema: np.array, reference_ema: np.array) -> tuple:
     """Align EMA sequences by interpolating shorter to longer length for our model and reference EMA.
-       Since usually reference EMA are a little shorter."""
+    Since usually reference EMA are a little shorter."""
     target_len = max(len(model_ema), len(reference_ema))
-    
+
     if len(model_ema) == len(reference_ema):
         return model_ema, reference_ema
     elif len(model_ema) < target_len:

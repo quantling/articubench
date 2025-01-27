@@ -72,9 +72,9 @@ def load_tiny():
     tongue_heights = data.reference_cp.apply(lambda cp: tongue_height_from_cps(cp) if cp is not None else None)
     emas_tt = data.reference_cp.apply(lambda cp: cps_to_ema(cp)[EMAS_TT].to_numpy() if cp is not None else None)
     emas_tb = data.reference_cp.apply(lambda cp: cps_to_ema(cp)[EMAS_TB].to_numpy() if cp is not None else None)
-    data['reference_ema_TT'][~emas_tt.isna()] = emas_tt[~emas_tt.isna()]
-    data['reference_ema_TB'][~emas_tb.isna()] = emas_tb[~emas_tb.isna()]
-    data['reference_tongue_height'][~tongue_heights.isna()] = tongue_heights[~tongue_heights.isna()]
+    data.loc[~emas_tt.isna(), 'reference_ema_TT'] = emas_tt[~emas_tt.isna()]
+    data.loc[~emas_tb.isna(), 'reference_ema_TB'] = emas_tb[~emas_tb.isna()]
+    data.loc[~tongue_heights.isna(), 'reference_tongue_height'] = tongue_heights[~tongue_heights.isna()]
     return data
 
 
@@ -101,9 +101,9 @@ def load_small():
     data['emas'] = data.reference_cp.progress_apply(lambda cp: cps_to_ema(cp) if cp is not None else None)
     emas_tt = data['emas'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy() if emas is not None else None)
     emas_tb = data['emas'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy() if emas is not None else None)
-    data['reference_ema_TT'][~emas_tt.isna()] = emas_tt[~emas_tt.isna()]
-    data['reference_ema_TB'][~emas_tb.isna()] = emas_tb[~emas_tb.isna()]
-    data['reference_tongue_height'][~tongue_heights.isna()] = tongue_heights[~tongue_heights.isna()]
+    data.loc[~emas_tt.isna(), 'reference_ema_TT'] = emas_tt[~emas_tt.isna()]
+    data.loc[~emas_tb.isna(), 'reference_ema_TB'] = emas_tb[~emas_tb.isna()]
+    data.loc[~tongue_heights.isna(), 'reference_tongue_height'] = tongue_heights[~tongue_heights.isna()]
     pd.to_pickle(data, 'small_loaded.pkl')
     return data
 

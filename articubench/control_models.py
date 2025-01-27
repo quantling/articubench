@@ -64,7 +64,9 @@ PAULE_MODEL = paule.Paule(device=DEVICE)
 EMBEDDER = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
 EMBEDDER.load_state_dict(torch.load(
     os.path.join(DIR, "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
-    map_location=DEVICE))
+    map_location=DEVICE,
+    weights_only=True))
+
 EMBEDDER = EMBEDDER.to(DEVICE)
 EMBEDDER.eval()
 

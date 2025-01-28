@@ -24,7 +24,22 @@ from .util import (
     mel_to_tensor,
     cps_to_ema,
     align_ema,
+    DIR,
+    DEVICE,
+    CPU_CORES,
+    MAX_VEL_GECO,
+    MAX_JERK_GECO,
+    LABEL_VECTORS,
+    LABEL_VECTORS_NP,
+    BASELINE_TONGUE_HEIGHT,
+    BASELINE_EMA,
+    BASELINE_SPECTROGRAM,
+    BASELINE_LOUDNESS,
+    BASELINE_SEMDIST,
+    EMAS_TB,
+    EMAS_TT
 )
+
 from .eval_tongue_height import tongue_height_from_cps
 from .embedding_models import MelEmbeddingModel
 from .control_models import synth_baseline_schwa
@@ -35,47 +50,6 @@ tqdm.pandas()
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-DIR = os.path.dirname(__file__)
-CPU_CORES = 8
-
-"""
-MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.044404  ,
-       0.016517  , 0.08116   , 0.04426   , 0.03542   , 0.04072   ,
-       0.06958   , 0.03959091, 0.02612571, 0.02720448, 0.03931667,
-       0.03434   , 0.024108  , 0.080998  , 0.081097  , 0.00109286,
-       0.081634  , 0.02085943, 0.01849143, 0.0081164 , 0.        ,
-       0.040585  , 0.0006106 , 0.        , 0.        , 0.        ])
-"""
-MAX_VEL_GECO = 0.081634
-MAX_VEL_GECO = 150.0
-
-"""
-MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.78314286e-02,
-       2.47940000e-02, 1.23300000e-03, 3.47480000e-02, 9.73363636e-03,
-       1.22457143e-02, 1.46800000e-02, 1.86000000e-03, 5.59890909e-03,
-       5.68000000e-03, 5.50247750e-03, 1.30963333e-02, 1.18733333e-02,
-       7.16000000e-04, 1.53860000e-02, 9.56100000e-03, 1.07142857e-05,
-       6.85760060e-03, 3.40171429e-03, 3.00342857e-03, 1.32360000e-03,
-       0.00000000e+00, 1.28800000e-03, 2.22000000e-05, 0.00000000e+00,
-       0.00000000e+00, 0.00000000e+00])
-"""
-MAX_JERK_GECO = 0.034748
-MAX_JERK_GECO = 150.0
-
-LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
-
-LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
-
-BASELINE_TONGUE_HEIGHT = None
-BASELINE_EMA = None
-BASELINE_SPECTROGRAM = None
-BASELINE_LOUDNESS = None
-BASELINE_SEMDIST = None
-
-
-EMAS_TB = ["TONGUE_225-x[cm]", "TONGUE_225-y[cm]", "TONGUE_225-z[cm]"]
-EMAS_TT = ["TONGUE_115-x[cm]", "TONGUE_115-y[cm]", "TONGUE_115-z[cm]"]
 
 
 def _no_data_in_column(column, data):
@@ -110,8 +84,7 @@ def score(
     size="tiny",
     tasks="all",
     subscores="all",
-    return_individual_subscores=False,
-    device=torch.device("cpu"),
+    return_individual_subscores=False
 ):
     """
     Main function to calculate the score for the benchmark.
@@ -136,7 +109,7 @@ def score(
 
     start_time = time.time()
 
-    if (not isinstance(subscores, abc.Sequence) and not isinstance(tasks, str)) or (
+    if (not isinstance(subscores, abc.Sequence) and not isinstance(tasks, (list, tuple, str))) or (
         isinstance(tasks, str) and tasks != "all"
     ):
         raise ValueError('tasks has to be either list of tasks or "all"')
@@ -278,13 +251,17 @@ def score(
         BASELINE_EMA = np.mean(
             data.progress_apply(
                 lambda row: RMSE(
-                    *align_ema(row["ema_TT_baseline"], row["reference_ema_TT"])
+                    #*align_ema(
+                        row["ema_TT_baseline"], row["reference_ema_TT"]
+                        #)
                 ),
                 axis=1,
             )
             + data.progress_apply(
                 lambda row: RMSE(
-                    *align_ema(row["ema_TB_baseline"], row["reference_ema_TB"])
+                    #*align_ema(
+                        row["ema_TB_baseline"], row["reference_ema_TB"]
+                        #)
                 ),
                 axis=1,
             )
@@ -344,12 +321,12 @@ def score(
                     DIR,
                     "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt",
                 ),
-                map_location=device,
+                map_location=DEVICE,
+                weights_only=True
             )
         )
-        embedder = embedder.to(device)
+        embedder = embedder.to(DEVICE)
         embedder.eval()
-
         with torch.no_grad():
             for task in tasks:
                 if _no_data_in_column(f"semantic_vector_{task}", data):

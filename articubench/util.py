@@ -17,10 +17,50 @@ import torch
 import requests
 from scipy.interpolate import PchipInterpolator
 
+#setting some package constants
+DIR = os.path.dirname(__file__)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+CPU_CORES = 8
+"""
+MAX_VEL_GECO = np.array([0.078452  , 0.0784    , 0.081156  , 0.05490857, 0.044404  ,
+       0.016517  , 0.08116   , 0.04426   , 0.03542   , 0.04072   ,
+       0.06958   , 0.03959091, 0.02612571, 0.02720448, 0.03931667,
+       0.03434   , 0.024108  , 0.080998  , 0.081097  , 0.00109286,
+       0.081634  , 0.02085943, 0.01849143, 0.0081164 , 0.        ,
+       0.040585  , 0.0006106 , 0.        , 0.        , 0.        ])
+"""
+MAX_VEL_GECO = 0.081634 #infered from GECO dataset
+MAX_VEL_GECO = 150.0    #setted manually as our MAX
+
+"""
+MAX_JERK_GECO = np.array([1.83420000e-02, 3.17840000e-02, 2.38400000e-03, 1.78314286e-02,
+       2.47940000e-02, 1.23300000e-03, 3.47480000e-02, 9.73363636e-03,
+       1.22457143e-02, 1.46800000e-02, 1.86000000e-03, 5.59890909e-03,
+       5.68000000e-03, 5.50247750e-03, 1.30963333e-02, 1.18733333e-02,
+       7.16000000e-04, 1.53860000e-02, 9.56100000e-03, 1.07142857e-05,
+       6.85760060e-03, 3.40171429e-03, 3.00342857e-03, 1.32360000e-03,
+       0.00000000e+00, 1.28800000e-03, 2.22000000e-05, 0.00000000e+00,
+       0.00000000e+00, 0.00000000e+00])
+"""
+MAX_JERK_GECO = 0.034748 #infered from GECO dataset
+MAX_JERK_GECO = 150.0    #setted manually as our MAX
+
+LABEL_VECTORS = pd.read_pickle(os.path.join(DIR, "data/lexical_embedding_vectors.pkl"))
+
+LABEL_VECTORS_NP = np.array(list(LABEL_VECTORS.vector))
+
+BASELINE_TONGUE_HEIGHT = None
+BASELINE_EMA = None
+BASELINE_SPECTROGRAM = None
+BASELINE_LOUDNESS = None
+BASELINE_SEMDIST = None
+
+
+EMAS_TB = ["TONGUE_225-x[cm]", "TONGUE_225-y[cm]", "TONGUE_225-z[cm]"]
+EMAS_TT = ["TONGUE_115-x[cm]", "TONGUE_115-y[cm]", "TONGUE_115-z[cm]"]
+
 
 # load vocaltractlab binary
-DIR = os.path.dirname(__file__)
 PREFIX = "lib"
 SUFFIX = ""
 if sys.platform.startswith("linux"):

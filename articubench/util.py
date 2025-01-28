@@ -1099,6 +1099,10 @@ def interpolate(length: int, array: np.array):
 def align_ema(model_ema: np.array, reference_ema: np.array) -> tuple:
     """Align EMA sequences by interpolating shorter to longer length for our model and reference EMA.
     Since usually reference EMA are a little shorter."""
+    
+    if model_ema is None or reference_ema is None:
+        return model_ema, reference_ema
+
     target_len = max(len(model_ema), len(reference_ema))
 
     if len(model_ema) == len(reference_ema):

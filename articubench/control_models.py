@@ -70,6 +70,8 @@ EMBEDDER.load_state_dict(torch.load(
 EMBEDDER = EMBEDDER.to(DEVICE)
 EMBEDDER.eval()
 
+INVERSE_MODEL = PAULE_MODEL.inv_model.to(torch.float32)
+
 """sampa_convert_dict = {
     'etu':'@',
     'atu':'6',
@@ -444,6 +446,20 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
     return cps
 
 
+def synth_inverse_paule(seq_length, *, target_semantic_vector=None,
+                  target_audio=None, sampling_rate=None):
+    
+    if target_audio is None or sampling_rate is None:
+        raise ValueError("target_audio and sampling_rate are required")
+
+    audio_mel = util.normalize_mel_librosa(util.librosa_melspec(target_audio, sampling_rate))
+    audio_mel_tensor = torch.Tensor(audio_mel).unsqueeze(0).to(DEVICE)
+    cps = INVERSE_MODEL(audio_mel_tensor).squeeze(0).detach().cpu().numpy()
+
+    assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
+
+    return util.inv_normalize_cp(cps)
+    
 control_models_to_evaluate = {'baseline': synth_baseline_schwa,
         'paule_fast': synth_paule_fast}
         #'paule_acoustic_semvec': synth_paule_acoustic_semvec}

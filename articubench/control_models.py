@@ -70,7 +70,8 @@ EMBEDDER.load_state_dict(torch.load(
 EMBEDDER = EMBEDDER.to(DEVICE)
 EMBEDDER.eval()
 
-INVERSE_MODEL = PAULE_MODEL.inv_model.to(torch.float32)
+INVERSE_MODEL = PAULE_MODEL.inv_model.eval()
+INVERSE_GAN = PAULE_MODEL.cp_gen_model.eval()
 
 """sampa_convert_dict = {
     'etu':'@',
@@ -448,13 +449,16 @@ def synth_baseline_segment(seq_length, *, target_semantic_vector=None, target_au
 
 def synth_inverse_paule(seq_length, *, target_semantic_vector=None,
                   target_audio=None, sampling_rate=None):
-    
-    if target_audio is None or sampling_rate is None:
-        raise ValueError("target_audio and sampling_rate are required")
 
-    audio_mel = util.normalize_mel_librosa(util.librosa_melspec(target_audio, sampling_rate))
-    audio_mel_tensor = torch.Tensor(audio_mel).unsqueeze(0).to(DEVICE)
-    cps = INVERSE_MODEL(audio_mel_tensor).squeeze(0).detach().cpu().numpy()
+
+    if target_audio is None or sampling_rate is None:
+        cp_gen_noise = torch.randn(1, 1, 100).to(DEVICE)
+        cps = INVERSE_GAN(cp_gen_noise, seq_length, torch.tensor(target_semantic_vector, device=DEVICE).unsqueeze(0)).squeeze(0).detach().cpu().numpy()
+
+    else:
+        audio_mel = util.normalize_mel_librosa(util.librosa_melspec(target_audio, sampling_rate))
+        audio_mel_tensor = torch.tensor(audio_mel, device=DEVICE).unsqueeze(0)
+        cps = INVERSE_MODEL(audio_mel_tensor).squeeze(0).detach().cpu().numpy()
 
     assert cps.shape[0] == seq_length, f'cps have length: {cps.shape[0]}, while seq length is: {seq_length}'
 

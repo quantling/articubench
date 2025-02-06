@@ -14,18 +14,18 @@ DIR = os.path.dirname(__file__)
 
 def test_baseline():
     results = score(synth_baseline_schwa, size='tiny', tasks='all', subscores='all', return_individual_subscores=True)
-    with open(DIR + 'results_dump/minimal_example_results_baseline_small.pkl', 'wb') as pfile:
+    with open(DIR + 'results_dump/minimal_example_results_baseline_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
 
 def test_segment():
     results = score(synth_baseline_segment, size='tiny', tasks='all', subscores='all', return_individual_subscores=True)
-    with open(DIR + 'results_dump/minimal_example_results_segment_small.pkl', 'wb') as pfile:
+    with open(DIR + 'results_dump/minimal_example_results_segment_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
 
 
 def test_paule_fast():
     results = score(synth_paule_fast, size='tiny', tasks='all', subscores='all', return_individual_subscores=True)
-    with open(DIR + 'results_dump/test_minimal_example_results_fast_small.pkl', 'wb') as pfile:
+    with open(DIR + 'results_dump/test_minimal_example_results_fast_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
     return results
 
@@ -36,8 +36,8 @@ def test_semvec():
     #     pickle.dump((results), pfile)
 
 def test_inverse():
-    results = score(synth_inverse_paule, size='tiny', tasks=('copy-synthesis', 'semantic-acoustic'), subscores='all', return_individual_subscores=True)
-    with open(DIR + 'results_dump/test_minimal_example_results_fast_small.pkl', 'wb') as pfile:
+    results = score(synth_inverse_paule, size='tiny', tasks='all', subscores='all', return_individual_subscores=True)
+    with open(DIR + 'results_dump/test_minimal_example_results_inverse_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
     return results
 

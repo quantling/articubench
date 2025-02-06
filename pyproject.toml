@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "articubench"
-version = "0.2.0"
+version = "0.2.1"
 description = "articubench - An Articulatory Speech Synthesis Benchmark"
 authors = ["Konstantin (Tino) Sering <konstantin.sering@uni-tuebingen.de>",
            "Paul Schmidt-Barbo",]
@@ -21,7 +21,7 @@ classifiers = ['Development Status :: 3 - Alpha',
                'Topic :: Scientific/Engineering :: Information Analysis',]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.12"
+python = ">=3.9,<=3.12.7"
 torch = ">=1.7.0"
 numpy = ">=1.23.1"
 pandas = ">=1.5.3"

@@ -8,9 +8,13 @@
    :caption: Contents:
 
    quickstart
+   overview
    installation
+   control_models
    data
    scores
+   tasks
+   usage
    development
    articubench
    about

@@ -79,7 +79,7 @@ def load_tiny():
 
 
 def load_small():
-    data = pd.read_pickle(os.path.join(DIR, 'data/new_small_df2.pkl'))
+    data = pd.read_pickle(os.path.join(DIR, 'data/small.pkl'))
     if 'reference_cp' not in data.columns:
         data['reference_cp'] = None
     if 'reference_tongue_height' not in data.columns:
@@ -104,7 +104,6 @@ def load_small():
     data.loc[~emas_tt.isna(), 'reference_ema_TT'] = emas_tt[~emas_tt.isna()]
     data.loc[~emas_tb.isna(), 'reference_ema_TB'] = emas_tb[~emas_tb.isna()]
     data.loc[~tongue_heights.isna(), 'reference_tongue_height'] = tongue_heights[~tongue_heights.isna()]
-    pd.to_pickle(data, 'small_loaded.pkl')
     return data
 
 def load_normal():

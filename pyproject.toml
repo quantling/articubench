@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "articubench"
-version = "0.2.1"
+version = "0.3.0"
 description = "articubench - An Articulatory Speech Synthesis Benchmark"
 authors = ["Konstantin (Tino) Sering <konstantin.sering@uni-tuebingen.de>",
            "Paul Schmidt-Barbo",]
@@ -35,7 +35,6 @@ paule = ">=0.3.6"
 llvmlite = ">=0.42.0"
 setuptools = ">=69.1.0"
 resampy = ">=0.4.2"
-praat-parselmouth = "^0.4.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.2.2"

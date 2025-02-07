@@ -2,8 +2,20 @@
 Usage
 ================
 
+Quickstart
+==========
+
+To quickstart the benchmark model we can simply run 'python tests/test_articubench.py'.
+
+If we want to further specify model, dataset size and tasks to evaluate, we can specify by using parser arguments:
+
+- --model   choices=['all', 'baseline', 'segment', 'paule_fast', 'semvec', 'inverse'], specifies the model to benchmark
+- --size    choices=['tiny', 'small'], specifies either a "tiny" size with 4 data points used for testing purposes or "small" with 2000 datapoints used for a small first statistical analysis
+- --tasks   choices=['all'], specifies the tasks to evaluate on, currently only gives us "all" but specifying single tasks is WIP.
+
+
 Minimal example
-======
+===============
 
 
 After installing the model a minimal working example can be found in 'articubench/examples/minimal_example.py'.

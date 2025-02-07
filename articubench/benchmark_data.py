@@ -47,9 +47,10 @@ import pandas as pd
 
 from .eval_tongue_height import tongue_height_from_cps
 from .util import cps_to_ema
-
+from tqdm import tqdm
+tqdm.pandas()
 EMAS_TB = ['TONGUE_225-x[cm]', 'TONGUE_225-y[cm]', 'TONGUE_225-z[cm]']
-EMAS_TT = ['TONGUE_335-x[cm]', 'TONGUE_335-y[cm]', 'TONGUE_335-z[cm]']
+EMAS_TT = ['TONGUE_115-x[cm]', 'TONGUE_115-y[cm]', 'TONGUE_115-z[cm]']
 
 DIR = os.path.dirname(__file__)
 
@@ -71,16 +72,39 @@ def load_tiny():
     tongue_heights = data.reference_cp.apply(lambda cp: tongue_height_from_cps(cp) if cp is not None else None)
     emas_tt = data.reference_cp.apply(lambda cp: cps_to_ema(cp)[EMAS_TT].to_numpy() if cp is not None else None)
     emas_tb = data.reference_cp.apply(lambda cp: cps_to_ema(cp)[EMAS_TB].to_numpy() if cp is not None else None)
-    data['reference_ema_TT'][~emas_tt.isna()] = emas_tt[~emas_tt.isna()]
-    data['reference_ema_TB'][~emas_tb.isna()] = emas_tb[~emas_tb.isna()]
-    data['reference_tongue_height'][~tongue_heights.isna()] = tongue_heights[~tongue_heights.isna()]
+    data.loc[~emas_tt.isna(), 'reference_ema_TT'] = emas_tt[~emas_tt.isna()]
+    data.loc[~emas_tb.isna(), 'reference_ema_TB'] = emas_tb[~emas_tb.isna()]
+    data.loc[~tongue_heights.isna(), 'reference_tongue_height'] = tongue_heights[~tongue_heights.isna()]
     return data
 
 
 def load_small():
-    data = None
-    return data
+    data = pd.read_pickle(os.path.join(DIR, 'data/small.pkl'))
+    if 'reference_cp' not in data.columns:
+        data['reference_cp'] = None
+    if 'reference_tongue_height' not in data.columns:
+        data['reference_tongue_height'] = None
+    if 'reference_ema_TT' not in data.columns:
+        data['reference_ema_TT'] = None
+    if 'reference_ema_TB' not in data.columns:
+        data['reference_ema_TB'] = None
 
+
+    #we dont compute lengths since i precomputed them already
+
+    #we drop rows which have length 32 and less since paule creates length 34
+    data.drop(data[data['len_cp'] <= 32].index, inplace=True)
+    #we also drop ref_emas for noow, since i dont know why they have the wrong shape
+    #data['reference_ema_TT'] = None
+    #data['reference_ema_TB'] = None
+    tongue_heights = data.reference_cp.progress_apply(lambda cp: tongue_height_from_cps(cp) if cp is not None else None)
+    data['emas'] = data.reference_cp.progress_apply(lambda cp: cps_to_ema(cp) if cp is not None else None)
+    emas_tt = data['emas'].progress_apply(lambda emas: emas[EMAS_TT].to_numpy() if emas is not None else None)
+    emas_tb = data['emas'].progress_apply(lambda emas: emas[EMAS_TB].to_numpy() if emas is not None else None)
+    data.loc[~emas_tt.isna(), 'reference_ema_TT'] = emas_tt[~emas_tt.isna()]
+    data.loc[~emas_tb.isna(), 'reference_ema_TB'] = emas_tb[~emas_tb.isna()]
+    data.loc[~tongue_heights.isna(), 'reference_tongue_height'] = tongue_heights[~tongue_heights.isna()]
+    return data
 
 def load_normal():
     data = None

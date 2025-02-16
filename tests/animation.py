@@ -135,6 +135,7 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.1):
             
     except KeyboardInterrupt:
         print("Animation stopped by user")
+        shutil.rmtree(DIR + '/Meshes') #cleanup mesh files
     finally:
         vis.destroy_window()
 

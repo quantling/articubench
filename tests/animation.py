@@ -24,7 +24,7 @@ speaker_file_name = ctypes.c_char_p(
     os.path.join(DIR, "vocaltractlab_api/JD3.speaker").encode()
 )
 #initialize file and path names
-data = pd.read_pickle('/home/andre/articubench/articubench/data/tiny.pkl')
+data = pd.read_pickle('/home/bob/AndreWorkland/articubench/articubench/data/small.pkl')
 cps = data['reference_cp'].iloc[0]
 label = data['label'].iloc[0]
 
@@ -62,17 +62,17 @@ def load_mesh_and_emas(mesh_path, ema_file, frame_index):
     pcd_tback = o3d.geometry.PointCloud()
     pcd_tmiddle= o3d.geometry.PointCloud()
     pcd_ttip = o3d.geometry.PointCloud()
-    pcd_tback.points = o3d.utility.Vector3dVector([ema_points[frame_index, 1:4]])  # Assuming first column is time
-    pcd_tmiddle.points = o3d.utility.Vector3dVector([ema_points[frame_index, 4:7]])  # Assuming first column is time
-    pcd_ttip.points = o3d.utility.Vector3dVector([ema_points[frame_index, 7:10]])  # Assuming first column is time
-    # Color EMA points red
+    pcd_tback.points = o3d.utility.Vector3dVector([ema_points[frame_index, 1:4]])  
+    pcd_tmiddle.points = o3d.utility.Vector3dVector([ema_points[frame_index, 4:7]])  
+    pcd_ttip.points = o3d.utility.Vector3dVector([ema_points[frame_index, 7:10]]) 
+    
     pcd_tback.paint_uniform_color([1, 0, 0]) #back is red
     pcd_tmiddle.paint_uniform_color([0, 1, 0]) #middle is green
     pcd_ttip.paint_uniform_color([0, 0, 1]) #tip is blue
     
     return mesh, (pcd_tback, pcd_tmiddle, pcd_ttip)
 
-def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.1):
+def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.033):
     """
     Visualize VTL meshes and EMA points animation
     
@@ -81,26 +81,31 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.1):
         ema_file: Path to the EMA points file
         frame_time: Time between frames in seconds
     """
-    # Create visualization window
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name="VTL Animation Viewer")
     
-    # Get sorted list of mesh files
+    # Get sorted list of mesh files and load EMA data once
     mesh_files = sorted(glob.glob(os.path.join(mesh_dir, "*.obj")))
-    
+    ema_points = np.loadtxt(ema_file, skiprows=1)
+
     if not mesh_files:
         print("No mesh files found in directory!")
         return
-        
+    
+    if len(mesh_files) != len(ema_points):
+        print(f"Warning: Number of meshes ({len(mesh_files)}) doesn't match EMA frames ({len(ema_points)})")
+    
     # Load first mesh to setup scene
     current_mesh, (tback, tmiddle, ttip) = load_mesh_and_emas(mesh_files[0], ema_file, 0)
     
-    # Add geometries to visualizer
     vis.add_geometry(current_mesh)
     vis.add_geometry(tback)
     vis.add_geometry(tmiddle)
     vis.add_geometry(ttip)
-    
+    # Add coordinate frame, useful for reference x(red), y(green), z(blue)
+    #vis.add_geometry(create_coordinate_frame())
+
+
     # Add coordinate frame, useful for reference x(red), y(green), z(blue)
     #vis.add_geometry(create_coordinate_frame())
     
@@ -111,33 +116,42 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.1):
     ctr.set_up([0, 1, 0])
     
     try:
-        for frame_idx, mesh_file in enumerate(mesh_files):
-            # Update mesh
-            new_mesh, (new_tback, new_tmiddle, new_ttip) = load_mesh_and_emas(mesh_file, ema_file, frame_idx)
-            current_mesh.vertices = new_mesh.vertices
-            current_mesh.triangles = new_mesh.triangles
-            current_mesh.compute_vertex_normals()
+        last_update = time.time()
+        frame_idx = 0
+        
+        while frame_idx < len(mesh_files):
+            current_time = time.time()
             
-            # Update EMA points
-            tback.points = new_tback.points
-            tmiddle.points = new_tmiddle.points
-            ttip.points = new_ttip.points
+            if current_time - last_update >= frame_time:
+                # Update mesh
+                new_mesh = o3d.io.read_triangle_mesh(mesh_files[frame_idx])
+                current_mesh.vertices = new_mesh.vertices
+                current_mesh.triangles = new_mesh.triangles
+                current_mesh.compute_vertex_normals()
+                
+                # Update EMA points
+                frame_ema = ema_points[frame_idx]
+                tback.points = o3d.utility.Vector3dVector([frame_ema[1:4]])
+                tmiddle.points = o3d.utility.Vector3dVector([frame_ema[4:7]])
+                ttip.points = o3d.utility.Vector3dVector([frame_ema[7:10]])
+                
+                # Update visualization
+                vis.update_geometry(current_mesh)
+                vis.update_geometry(tback)
+                vis.update_geometry(tmiddle)
+                vis.update_geometry(ttip)
+                
+                last_update = current_time
+                frame_idx += 1
             
-            # Update visualization
-            vis.update_geometry(current_mesh)
-            vis.update_geometry(tback)
-            vis.update_geometry(tmiddle)
-            vis.update_geometry(ttip)
             vis.poll_events()
             vis.update_renderer()
             
-            time.sleep(frame_time)
-            
     except KeyboardInterrupt:
         print("Animation stopped by user")
-        shutil.rmtree(DIR + '/Meshes') #cleanup mesh files
     finally:
         vis.destroy_window()
+        shutil.rmtree(DIR + '/Meshes')  # cleanup mesh files
 
 if __name__ == "__main__":
     # Example usage

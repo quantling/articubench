@@ -29,13 +29,13 @@ speaker_file_name = ctypes.c_char_p(
 )
 
 #initialize file and path names
-data = pd.read_pickle('/home/bob/AndreWorkland/articubench/articubench/data/small.pkl')
+data = pd.read_pickle('/home/bob/AndreWorkland/articubench/test_small_kec_df_with_emas.pkl')
 #cps = data['reference_cp'].iloc[-1]
 label = data['label'].iloc[-1]
 print(label)
-
+print(data.columns)
 cps = synth_paule_fast(seq_length = data['len_cp'].iloc[-1],
-                       target_semantic_vector=data['target_semantic_vector'].iloc[-1],
+                       target_semantic_vector=data['vector'].iloc[-1],
                         target_audio = data['target_sig'].iloc[-1],
                         sampling_rate= data['target_sr'].iloc[-1])
 #plot_cps = normalize_cp(cps)
@@ -67,7 +67,7 @@ def create_coordinate_frame(size=1.0):
 
 
 
-def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.2):
+def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
     """
     Visualize VTL meshes and EMA points animation
     
@@ -81,21 +81,24 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.2):
     
     # Get sorted list of mesh files and load EMA data once
     mesh_files = sorted(glob.glob(os.path.join(mesh_dir, "*.obj")))
-    ref_ema_ttip = data['reference_ema_TT'].iloc[-1]
-    ref_ema_tmiddle = data['reference_ema_TB'].iloc[-1]
+    ref_ema = data['reference_emas']
+    ref_ema_ttip = ref_ema.iloc[0][:, 0:3]
+    ref_ema_tmiddle = ref_ema.iloc[0][:, 3:6]
+
+    ref_ema_ttip = ref_ema_ttip / 10
+    ref_ema_tmiddle = ref_ema_tmiddle / 10 
 
     ema_points = np.loadtxt(ema_file, skiprows=1)
 
     _, ref_ema_ttip = align_ema(ema_points, ref_ema_ttip)
     _, ref_ema_tmiddle = align_ema(ema_points, ref_ema_tmiddle)
-    #ref_ema_tt = scale_emas_to_vtl(ref_ema_tt, ema_point)
-    #ref_ema_tb = scale_emas_to_vtl(ref_ema_tb)
+
     if not mesh_files:
         print("No mesh files found in directory!")
         return
     
     if len(mesh_files) != len(ref_ema_ttip):
-        print(f"Warning: Number of meshes ({len(mesh_files)}) doesn't match EMA frames ({len(ref_ema_tt)})")
+        print(f"Warning: Number of meshes ({len(mesh_files)}) doesn't match EMA frames ({len(ref_ema_ttip)})")
     
     meshes = []
     for mesh_file in tqdm(sorted(mesh_files, key=lambda x: int(os.path.basename(x).split(".")[0].removeprefix(f"{label}")))):
@@ -114,8 +117,8 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.2):
     tback.points = o3d.utility.Vector3dVector([ema_points[0, 1:4]])  
     tmiddle.points = o3d.utility.Vector3dVector([ema_points[0, 4:7]])
     ttip.points = o3d.utility.Vector3dVector([ema_points[0, 7:10]])
-    ref_tmiddle.points = o3d.utility.Vector3dVector([ref_ema_ttip[0]])  
-    ref_ttip.points = o3d.utility.Vector3dVector([ref_ema_tmiddle[0]]) 
+    ref_tmiddle.points = o3d.utility.Vector3dVector([ref_ema_tmiddle[0]])  
+    ref_ttip.points = o3d.utility.Vector3dVector([ref_ema_ttip[0]]) 
     
     tback.paint_uniform_color([1, 0, 0]) #back is red
     tmiddle.paint_uniform_color([0, 1, 0]) #middle is green

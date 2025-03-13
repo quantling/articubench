@@ -7,51 +7,12 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from articubench.util import cps_to_ema_and_mesh, normalize_cp, align_ema, scale_emas_to_vtl
 from articubench.control_models import synth_paule_fast
-#First we create ema and meshes like in backendDev
+
 
 DIR = os.path.dirname(__file__)
-# load vocaltractlab binary
-PREFIX = "lib"
-SUFFIX = ""
-if sys.platform.startswith("linux"):
-    SUFFIX = ".so"
-elif sys.platform.startswith("win32"):
-    PREFIX = ""
-    SUFFIX = ".dll"
-elif sys.platform.startswith("darwin"):
-    SUFFIX = ".dylib"
-VTL = ctypes.cdll.LoadLibrary(
-    os.path.join(DIR, f"vocaltractlab_api/{PREFIX}VocalTractLabApi{SUFFIX}")
-)
-# initialize vtl
-speaker_file_name = ctypes.c_char_p(
-    os.path.join(DIR, "vocaltractlab_api/JD3.speaker").encode()
-)
-
-#initialize file and path names
-data = pd.read_pickle('/home/bob/AndreWorkland/articubench/test_small_kec_df_with_emas.pkl')
-#cps = data['reference_cp'].iloc[-1]
-label = data['label'].iloc[-1]
-print(label)
-print(data.columns)
-cps = synth_paule_fast(seq_length = data['len_cp'].iloc[-1],
-                       target_semantic_vector=data['vector'].iloc[-1],
-                        target_audio = data['target_sig'].iloc[-1],
-                        sampling_rate= data['target_sr'].iloc[-1])
-#plot_cps = normalize_cp(cps)
-#plt.plot(plot_cps)
-#plt.show()
-
-speaker_file_name = ctypes.c_char_p('../resources/JD3.speaker'.encode())
-segment_file_name = ctypes.c_char_p(f'{label}.seg'.encode())
-gesture_file_name = ctypes.c_char_p(f'{label}.ges'.encode())
-file_name = ctypes.c_char_p(f'{label}'.encode())
-path_name = ctypes.c_char_p(f'Meshes/{label}'.encode())
+MESH_DIR = os.path.join(DIR, 'Meshes')
 
 
-#we get our ema and meshes
-
-cps_to_ema_and_mesh(cps, f'{label}', path=DIR + '/Meshes')
 
 
 #then we add the open3d code to visualize the animation
@@ -65,9 +26,32 @@ def create_coordinate_frame(size=1.0):
     """Creates a coordinate frame for reference"""
     return o3d.geometry.TriangleMesh.create_coordinate_frame(size=size)
 
+def create_trail_points(points_history, colors, alpha_values):
+    """
+    Create a point cloud for trailing points with fading colors
+    
+    Args:
+        points_history: List of point coordinates
+        colors: Base colors for points
+        alpha_values: Alpha values for each point (fading effect)
+    """
+    if not points_history:
+        return None
+        
+    trail = o3d.geometry.PointCloud()
+    trail.points = o3d.utility.Vector3dVector(points_history)
+    
+    # Create fading colors
+    faded_colors = []
+    for i, alpha in enumerate(alpha_values):
+        faded_color = colors.copy()
+        faded_color.append(alpha)  # Add alpha value
+        faded_colors.append(faded_color)
+    
+    trail.colors = o3d.utility.Vector3dVector(faded_colors)
+    return trail
 
-
-def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
+def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, trail_length=5):
     """
     Visualize VTL meshes and EMA points animation
     
@@ -77,22 +61,23 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
         frame_time: Time between frames in seconds
     """
     vis = o3d.visualization.Visualizer()
-    vis.create_window(window_name="VTL Animation Viewer")
+    vis.create_window(window_name="VTL Animation Viewer", width=1024, height=768)
     
     # Get sorted list of mesh files and load EMA data once
     mesh_files = sorted(glob.glob(os.path.join(mesh_dir, "*.obj")))
-    ref_ema = data['reference_emas']
-    ref_ema_ttip = ref_ema.iloc[0][:, 0:3]
-    ref_ema_tmiddle = ref_ema.iloc[0][:, 3:6]
-
-    ref_ema_ttip = ref_ema_ttip / 10
-    ref_ema_tmiddle = ref_ema_tmiddle / 10 
+    ref_ema_ttip = data['reference_ema_TT']
+    ref_ema_tmiddle = data['reference_ema_TB']
 
     ema_points = np.loadtxt(ema_file, skiprows=1)
 
+    #ref emas are notoriously like 2 off ._.
     _, ref_ema_ttip = align_ema(ema_points, ref_ema_ttip)
     _, ref_ema_tmiddle = align_ema(ema_points, ref_ema_tmiddle)
 
+    if scale: #x_offset=8, y_offset=0.3 z_offset=-0.3
+        ref_ema_ttip = scale_emas_to_vtl(ref_ema_ttip, x_offset=9)
+        ref_ema_tmiddle = scale_emas_to_vtl(ref_ema_tmiddle, z_offset=-0.6)
+        
     if not mesh_files:
         print("No mesh files found in directory!")
         return
@@ -107,7 +92,7 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
         meshes.append(mesh)
     
     current_mesh = meshes[0]
-    frame_ema = ema_points[0]
+
     tback = o3d.geometry.PointCloud()
     tmiddle= o3d.geometry.PointCloud()
     ttip = o3d.geometry.PointCloud()
@@ -123,35 +108,34 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
     tback.paint_uniform_color([1, 0, 0]) #back is red
     tmiddle.paint_uniform_color([0, 1, 0]) #middle is green
     ttip.paint_uniform_color([0, 0, 1]) #tip is blue
-    ref_tmiddle.paint_uniform_color([0.2, 1, 0]) #middle is green
-    ref_ttip.paint_uniform_color([0.2, 0, 1]) #tip is blue
+    ref_tmiddle.paint_uniform_color([0.5, 1, 0.5]) #middle is greenish
+    ref_ttip.paint_uniform_color([0.5, 0.5, 1]) #tip is blueish
     
-    #connection lines
+    #init lines
     lines_middle = o3d.geometry.LineSet()
     lines_tip = o3d.geometry.LineSet()
 
+    #set initial line points where our ema and ref_emas are
     lines_middle.points = o3d.utility.Vector3dVector(np.vstack([
-        ema_points[0, 4:7],  # tmiddle
-        ref_ema_ttip[0]        # ref_tmiddle
+        ema_points[0, 4:7],  
+        ref_ema_tmiddle[0]       
     ]))
     lines_tip.points = o3d.utility.Vector3dVector(np.vstack([
-        ema_points[0, 7:10], # ttip
-        ref_ema_tmiddle[0]        # ref_ttip
+        ema_points[0, 7:10],
+        ref_ema_ttip[0]      
     ]))
     
-    # Define line connections (connect point 0 to point 1)
+    #initial line connections
     lines_middle.lines = o3d.utility.Vector2iVector([[0, 1]])
     lines_tip.lines = o3d.utility.Vector2iVector([[0, 1]])
-    
-    # Set line colors
     lines_middle.colors = o3d.utility.Vector3dVector([[0, 1, 0]])  # Green
     lines_tip.colors = o3d.utility.Vector3dVector([[0, 0, 1]])     # Blue
     
-    # Add text for distances
-    #dist_text_ttip = o3d.visualization.TextGeometry("Distance: ")
-    #dist_text_ttip.font_size = 16
-    #dist_text_ttip.origin = np.array([-5, 5, 0]) 
-
+    # Initialize history for trailing points
+    ttip_history = []
+    tmiddle_history = []
+    ref_ttip_history = []
+    ref_tmiddle_history = []
 
     vis.add_geometry(current_mesh)
     vis.add_geometry(tback)
@@ -163,8 +147,17 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
     vis.add_geometry(lines_tip)
     #vis.add_geometry(dist_text_ttip)
     # Add coordinate frame, useful for reference x(red), y(green), z(blue)
-    #vis.add_geometry(create_coordinate_frame())
-
+    vis.add_geometry(create_coordinate_frame())
+    
+    # Create trailing point clouds (they'll be updated in the loop)
+    trail_ttip = o3d.geometry.PointCloud()
+    trail_tmiddle = o3d.geometry.PointCloud()
+    trail_ref_ttip = o3d.geometry.PointCloud()
+    trail_ref_tmiddle = o3d.geometry.PointCloud()
+    vis.add_geometry(trail_ttip)
+    vis.add_geometry(trail_tmiddle)
+    vis.add_geometry(trail_ref_ttip)
+    vis.add_geometry(trail_ref_tmiddle)
     
     # Set default camera view
     ctr = vis.get_view_control()
@@ -186,30 +179,84 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
                 current_mesh.triangles = new_mesh.triangles
                 current_mesh.compute_vertex_normals()
                 
-                # Update EMA points
-                frame_ema = ema_points[frame_idx]
-                tback.points = o3d.utility.Vector3dVector([frame_ema[1:4]])
-                tmiddle.points = o3d.utility.Vector3dVector([frame_ema[4:7]])
-                ttip.points = o3d.utility.Vector3dVector([frame_ema[7:10]])
-                ref_tmiddle.points = o3d.utility.Vector3dVector([ref_ema_tmiddle[frame_idx]])
-                ref_ttip.points = o3d.utility.Vector3dVector([ref_ema_ttip[frame_idx]])
+                # Get current EMA points
+                current_ttip = ema_points[frame_idx, 7:10]
+                current_tmiddle = ema_points[frame_idx, 4:7]
+                current_ref_ttip = ref_ema_ttip[frame_idx]
+                current_ref_tmiddle = ref_ema_tmiddle[frame_idx]
                 
-
+                # Update EMA points
+                tback.points = o3d.utility.Vector3dVector([ema_points[frame_idx, 1:4]])
+                tmiddle.points = o3d.utility.Vector3dVector([current_tmiddle])
+                ttip.points = o3d.utility.Vector3dVector([current_ttip])
+                ref_tmiddle.points = o3d.utility.Vector3dVector([current_ref_tmiddle])
+                ref_ttip.points = o3d.utility.Vector3dVector([current_ref_ttip])
+                
+                # Update connection lines
                 lines_middle.points = o3d.utility.Vector3dVector(np.vstack([
-                    frame_ema[4:7],      # tmiddle
-                    ref_ema_tmiddle[frame_idx] # ref_tmiddle
+                    current_tmiddle,
+                    current_ref_tmiddle
                 ]))
                 lines_tip.points = o3d.utility.Vector3dVector(np.vstack([
-                    frame_ema[7:10],     # ttip  
-                    ref_ema_ttip[frame_idx] # ref_ttip
+                    current_ttip,
+                    current_ref_ttip
                 ]))
                 
+                # Update history for trailing points
+                ttip_history.append(current_ttip)
+                tmiddle_history.append(current_tmiddle)
+                ref_ttip_history.append(current_ref_ttip)
+                ref_tmiddle_history.append(current_ref_tmiddle)
+                
+                # trim history!
+                if len(ttip_history) > trail_length:
+                    ttip_history = ttip_history[-trail_length:]
+                    tmiddle_history = tmiddle_history[-trail_length:]
+                    ref_ttip_history = ref_ttip_history[-trail_length:]
+                    ref_tmiddle_history = ref_tmiddle_history[-trail_length:]
+                
+                # Create alpha values for fading effect (oldest = most transparent)
+                alpha_values = np.linspace(0.1, 1.0, len(ttip_history))
+                
+                # Update trail point clouds
+                if ttip_history:
+                    # Base colors for each trail
+                    ttip_color = [0, 0, 1]  # Blue
+                    tmiddle_color = [0, 1, 0]  # Green
+                    ref_ttip_color = [0.5, 0.5, 1]  # Light blue
+                    ref_tmiddle_color = [0.5, 1, 0.5]  # Light green
+                    
+                    # Create fading colors - Open3D expects RGB without alpha in the colors attribute
+                    ttip_colors = np.array([[*ttip_color] for _ in alpha_values])
+                    tmiddle_colors = np.array([[*tmiddle_color] for _ in alpha_values])
+                    ref_ttip_colors = np.array([[*ref_ttip_color] for _ in alpha_values])
+                    ref_tmiddle_colors = np.array([[*ref_tmiddle_color] for _ in alpha_values])
+                    
+                    # update trail points after converting to np arrays
+                    ttip_history_array = np.array(ttip_history)
+                    tmiddle_history_array = np.array(tmiddle_history)
+                    ref_ttip_history_array = np.array(ref_ttip_history)
+                    ref_tmiddle_history_array = np.array(ref_tmiddle_history)
+                    
+                    # Only update if we have valid points or we get error
+                    if len(ttip_history_array) > 0:
+                        trail_ttip.colors = o3d.utility.Vector3dVector(ttip_colors)
+                        trail_tmiddle.colors = o3d.utility.Vector3dVector(tmiddle_colors)
+                        trail_ref_ttip.colors = o3d.utility.Vector3dVector(ref_ttip_colors)
+                        trail_ref_tmiddle.colors = o3d.utility.Vector3dVector(ref_tmiddle_colors)
+                        trail_ttip.points = o3d.utility.Vector3dVector(ttip_history_array)
+                        trail_tmiddle.points = o3d.utility.Vector3dVector(tmiddle_history_array)
+                        trail_ref_ttip.points = o3d.utility.Vector3dVector(ref_ttip_history_array)
+                        trail_ref_tmiddle.points = o3d.utility.Vector3dVector(ref_tmiddle_history_array)
+         
+
                 # Calculate distances
-                curr_dist = np.linalg.norm(frame_ema[7:10] - ref_ema_ttip[frame_idx])
+                curr_dist = np.linalg.norm(ema_points[frame_idx, 7:10] - ref_ema_ttip[frame_idx])
                 print(curr_dist)
                 #total_dist += curr_dist
                 #avg_dist = total_dist / (frame_idx + 1)
                 
+
                 # Update distance text
                 #dist_text_ttip.text = f"Tongue Tip, Current dist: {curr_dist:.2f}\nAvg dist: {avg_dist:.2f}"
                 
@@ -223,6 +270,10 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
                 vis.update_geometry(lines_middle)
                 vis.update_geometry(lines_tip)
                 #vis.update_geometry(dist_text_ttip)
+                vis.update_geometry(trail_ttip)
+                vis.update_geometry(trail_tmiddle)
+                vis.update_geometry(trail_ref_ttip)
+                vis.update_geometry(trail_ref_tmiddle)
 
                 last_update = current_time
                 frame_idx += 1
@@ -237,7 +288,29 @@ def visualize_vtl_animation(mesh_dir, ema_file, frame_time=0.5):
         shutil.rmtree(DIR + '/Meshes')  
 
 if __name__ == "__main__":
-    mesh_dir = DIR +f"/Meshes/{label}-meshes/"
-    ema_file = DIR + f"/Meshes/{label}-ema.txt"
-    
-    visualize_vtl_animation(mesh_dir, ema_file)
+    if os.path.exists(MESH_DIR):
+        print("Removing old meshes...")
+        shutil.rmtree(MESH_DIR)
+
+    #wir nehmen unser hinterstes dataframe weil wir fancy sind
+    data = pd.read_pickle('/home/bob/AndreWorkland/articubench/small.pkl').iloc[-1]
+    #cps = data['reference_cp'].iloc[-1]
+    label = data['label']
+    print(label)
+    print(data)
+    cps = synth_paule_fast(seq_length = data['len_cp'],
+                        target_semantic_vector=data['vector'],
+                            target_audio = data['target_sig'],
+                            sampling_rate= data['target_sr'])
+    #plot_cps = normalize_cp(cps)
+    #plt.plot(plot_cps)
+    #plt.show()
+
+
+    #we get our ema and meshes
+
+    cps_to_ema_and_mesh(cps, f'{label}', path=DIR + '/Meshes')
+    mesh_dir = os.path.join(MESH_DIR, f"{label}-meshes")
+    ema_file = os.path.join(MESH_DIR, f"{label}-ema.txt")
+
+    visualize_vtl_animation(mesh_dir, ema_file, scale=True)

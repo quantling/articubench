@@ -1095,27 +1095,44 @@ def get_pretrained_weights_version():
     return version
 
 
-def scale_emas_to_vtl(ema_point):
-    """Scales one 3d ema point from ja_halt Dataset to approximately scale to the VTL emas.
-    Firstly converting mm to cm, changing y and z axis and then scaling the points.
+def scale_emas_to_vtl(ema_data, x_offset=8, y_offset=0.3, z_offset=-0.3):
+    """
+    Scales EMA data from ja_halt dataset to approximately scale to VTL coordinates.
+    
     Parameters
     ==========
-    ema_point : np.array
-        3D ema point from ja halt dataset with [Sen.x, Sen.y, Sen.z] numpy arrays over time.
+    ema_data : np.array
+        EMA points with shape (n_frames, 3) or just (3,) for a single point
+    
     Returns
     =======
-    ema_point : np.array
-        returns the 3D ema points for different virtual EMA sensors in a
-        pandas.DataFrame"""
+    scaled_data : np.array
+        Scaled EMA data in VTL coordinate system
+    """
 
-    ema_point = ema_point / 10
+    ema_copy = ema_data.copy()
+    
+    #convert mm to cm
+    ema_copy = ema_copy / 10
 
-    ema_point[1], ema_point[2] = ema_point[2], ema_point[1]
+    #if is single point
+    if len(ema_copy) == 1:
 
-    ema_point[0] = ema_point[0] + 8
-    ema_point[2] = ema_point[2] - 0.3
-
-    return ema_point
+        ema_copy[1], ema_copy[2] = ema_copy[2], ema_copy[1]
+        
+        ema_copy[0] = ema_copy[0] + x_offset
+        ema_copy[1] = ema_copy[1] + y_offset    
+        ema_copy[2] = ema_copy[2] + z_offset
+        
+    else:
+        
+        ema_copy[:, [1, 2]] = ema_copy[:, [2, 1]]
+        
+        ema_copy[:, 0] = ema_copy[:, 0] + x_offset
+        ema_copy[:, 1] = ema_copy[:, 1] + y_offset    
+        ema_copy[:, 2] = ema_copy[:, 2] + z_offset  
+        
+    return ema_copy
 
 
 def interpolate(length: int, array: np.array):

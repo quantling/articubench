@@ -683,7 +683,7 @@ rmse_loss = RMSELoss(eps=0)
 
 def RMSE(x1, x2):
     if x1 is None or x2 is None:
-        return np.NaN
+        return np.nan
     rmse = rmse_loss(torch.from_numpy(x1), torch.from_numpy(x2))
     return rmse.item()
 

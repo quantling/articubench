@@ -27,18 +27,18 @@ def parser():
 
 def test_baseline(size='tiny', tasks='all', subscores='all'):
     results = score(synth_baseline_schwa, size=size, tasks=tasks, subscores=subscores, return_individual_subscores=True)
-    with open(DIR + 'results_dump/minimal_example_results_baseline_tiny.pkl', 'wb') as pfile:
+    with open(DIR + '/results_dump/minimal_example_results_baseline_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
 
 def test_segment(size='tiny', tasks='all', subscores='all'):
     results = score(synth_baseline_segment, size=size, tasks=tasks, subscores=subscores, return_individual_subscores=True)
-    with open(DIR + 'results_dump/minimal_example_results_segment_tiny.pkl', 'wb') as pfile:
+    with open(DIR + '/results_dump/minimal_example_results_segment_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
 
 
 def test_paule_fast(size='tiny', tasks='all', subscores='all'):
     results = score(synth_paule_fast, size=size, tasks=tasks, subscores=subscores, return_individual_subscores=True)
-    with open(DIR + 'results_dump/test_minimal_example_results_fast_tiny.pkl', 'wb') as pfile:
+    with open(DIR + '/results_dump/test_minimal_example_results_fast_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
     return results
 
@@ -50,7 +50,7 @@ def test_semvec(size='tiny', tasks='all', subscores='all'):
 
 def test_inverse(size='tiny', tasks='all', subscores='all'):
     results = score(synth_inverse_paule, size=size, tasks=tasks, subscores=subscores, return_individual_subscores=True)
-    with open(DIR + 'results_dump/test_minimal_example_results_inverse_tiny.pkl', 'wb') as pfile:
+    with open(DIR + '/results_dump/test_minimal_example_results_inverse_tiny.pkl', 'wb') as pfile:
         pickle.dump((results), pfile)
     return results
 

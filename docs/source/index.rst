@@ -7,14 +7,14 @@
    :maxdepth: 2
    :caption: Contents:
 
-   quickstart
+   usage
    overview
    installation
    control_models
    data
    scores
    tasks
-   usage
+
    development
    articubench
    about

@@ -5,13 +5,7 @@ articubench
    :target: https://zenodo.org/record/7252253
 
 A benchmark to evaluate articulatory speech synthesis systems. This benchmark
-uses the VocalTractLab [1] as its articulatory speech synthesis simulator.
-
-.. warning::
-
-   This package is not complete yet and will be hopefully released in March
-   2023 alongside the ESSV 2023.  If you are interested in the current status
-   get in touch with @derNarr or @paulovic96.
+uses the VocalTractLab [1]_ as its articulatory speech synthesis simulator.
 
 
 Installation
@@ -160,7 +154,7 @@ Classification            13.78                                             13.2
 Nomal                PAULE  Inverse  Seg-Model*       Baseline-Model
 ===================  =====  =======  ===============  ==============
 Total Score
-Articulatory Scores  
+Articulatory Scores
 Semantic Scores
 Acoustic Scores
 Tongue Height
@@ -202,30 +196,30 @@ First ideas about the articubench benchmark were presented at the ESSV2022:
 .. * fasttext 300 dim semantic vector for single words (semantics)
 .. * mid sagital tongue movement contour from ultra sound imaging
 .. * electromagnetic articulatory (EMA) sensors on tongue tip and tongue body
-.. 
+..
 .. Languages
 .. ---------
 .. * German
 .. * English (planned)
 .. * Mandarin (planned)
-.. 
+..
 .. Variants
 .. --------
 .. As running the benchmark is computational itensive there are different versions
 .. of this benchmark, which require different amounts of articulatory synthesis.
-.. 
-.. 
+..
+..
 .. Tiny
 .. ^^^^
 .. The smallest possible benchmark to check that everything works, but with no
 .. statistical power.
-.. 
-.. 
+..
+..
 .. Small
 .. ^^^^^
 .. A small benchmark with some statistical power.
-.. 
-.. 
+..
+..
 .. Normal
 .. ^^^^^^
 .. The standard benchmark, which might take some time to complete.
@@ -257,14 +251,16 @@ Additionally, for creating the benchmark:
 
 License
 -------
-* VTL is GPLv3.0+ license
+VTL is GPLv3.0+ license
+
 
 Acknowledgements
 ----------------
-This research was supported by an ERC advanced Grant (no. 742545) and the University of Tübingen.
+This research was supported by an ERC advanced Grant (no. 742545), a DFG
+project (no. 527671319) and the University of Tübingen.
 
 Links
 -----
 
-* [1] https://www.vocaltractlab.de/
+.. [1] https://www.vocaltractlab.de/
 

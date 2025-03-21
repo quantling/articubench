@@ -7,7 +7,10 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from articubench.util import cps_to_ema_and_mesh, normalize_cp, align_ema, scale_emas_to_vtl
 from articubench.control_models import synth_paule_fast
-
+import cv2
+import numpy as np
+from PIL import Image
+import io
 
 DIR = os.path.dirname(__file__)
 MESH_DIR = os.path.join(DIR, 'Meshes')
@@ -51,7 +54,7 @@ def create_trail_points(points_history, colors, alpha_values):
     trail.colors = o3d.utility.Vector3dVector(faded_colors)
     return trail
 
-def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, trail_length=5):
+def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, trail_length=5, export=True,width=1024, height=768):
     """
     Visualize VTL meshes and EMA points animation
     
@@ -61,7 +64,7 @@ def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, tra
         frame_time: Time between frames in seconds
     """
     vis = o3d.visualization.Visualizer()
-    vis.create_window(window_name="VTL Animation Viewer", width=1024, height=768)
+    vis.create_window(window_name="VTL Animation Viewer", width=width, height=height)
     
     # Get sorted list of mesh files and load EMA data once
     mesh_files = sorted(glob.glob(os.path.join(mesh_dir, "*.obj")))
@@ -164,7 +167,11 @@ def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, tra
     ctr.set_zoom(0.8)
     ctr.set_front([0, 0, -.8])
     ctr.set_up([0, .8, 0])
-    
+    if export:
+        # Setup video writer
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(filename='output.mp4', fourcc=fourcc, fps=30, frameSize=(1024, 768))
+
     try:
         last_update = time.time()
         frame_idx = 0
@@ -275,6 +282,18 @@ def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, tra
                 vis.update_geometry(trail_ref_ttip)
                 vis.update_geometry(trail_ref_tmiddle)
 
+                if export:
+                    # Capture frame
+                    img = vis.capture_screen_float_buffer()
+                    img = np.asarray(img)
+                    img = (img * 255).astype(np.uint8)
+                    
+                    # Convert to BGR for OpenCV
+                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                    
+                    # Write frame
+                    out.write(img)
+
                 last_update = current_time
                 frame_idx += 1
             
@@ -284,6 +303,8 @@ def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, tra
     except KeyboardInterrupt:
         print("Animation stopped by user")
     finally:
+        if export:
+            out.release()
         vis.destroy_window()
         shutil.rmtree(DIR + '/Meshes')  
 
@@ -313,4 +334,4 @@ if __name__ == "__main__":
     mesh_dir = os.path.join(MESH_DIR, f"{label}-meshes")
     ema_file = os.path.join(MESH_DIR, f"{label}-ema.txt")
 
-    visualize_vtl_animation(mesh_dir, ema_file, scale=True)
+    visualize_vtl_animation(mesh_dir, ema_file, scale=True, export=True)

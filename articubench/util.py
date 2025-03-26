@@ -1109,7 +1109,8 @@ def scale_emas_to_vtl(ema_data, x_offset=8, y_offset=0.3, z_offset=-0.3):
     scaled_data : np.array
         Scaled EMA data in VTL coordinate system
     """
-
+    #TODO: Vorzeichen identifizieren 
+    #TODO: (Transformationsmatrix)
     ema_copy = ema_data.copy()
     
     #convert mm to cm
@@ -1121,7 +1122,7 @@ def scale_emas_to_vtl(ema_data, x_offset=8, y_offset=0.3, z_offset=-0.3):
         ema_copy[1], ema_copy[2] = ema_copy[2], ema_copy[1]
         
         ema_copy[0] = ema_copy[0] + x_offset
-        ema_copy[1] = ema_copy[1] + y_offset    
+        ema_copy[1] = ema_copy[1] + y_offset
         ema_copy[2] = ema_copy[2] + z_offset
         
     else:

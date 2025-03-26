@@ -319,8 +319,7 @@ def score(
             torch.load(
                 os.path.join(
                     DIR,
-                    "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt",
-                ),
+                    "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
                 map_location=DEVICE,
                 weights_only=True
             )

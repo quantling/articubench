@@ -92,8 +92,8 @@ def load_small():
 
     #we dont compute lengths since i precomputed them already
 
-    #we drop rows which have length 32 and less since paule creates length 34
-    data.drop(data[data['len_cp'] <= 32].index, inplace=True)
+    #we drop rows which have a length of a multiple of 32, since librosa melspec gives us spectograms which are 1 too long, which results in wrong length spectrograms in acoustic condition
+    data.drop(data[data['len_cp'] % 32 == 0].index, inplace=True)
     #we also drop ref_emas for noow, since i dont know why they have the wrong shape
     #data['reference_ema_TT'] = None
     #data['reference_ema_TB'] = None

@@ -314,13 +314,13 @@ if __name__ == "__main__":
         shutil.rmtree(MESH_DIR)
 
     #wir nehmen unser hinterstes dataframe weil wir fancy sind
-    data = pd.read_pickle('/home/bob/AndreWorkland/articubench/small.pkl').iloc[-1]
+    data = pd.read_pickle('./articubench/data/small.pkl').iloc[-1]
     #cps = data['reference_cp'].iloc[-1]
     label = data['label']
     print(label)
     print(data)
     cps = synth_paule_fast(seq_length = data['len_cp'],
-                        target_semantic_vector=data['vector'],
+                        target_semantic_vector=data['target_semantic_vector'],
                             target_audio = data['target_sig'],
                             sampling_rate= data['target_sr'])
     #plot_cps = normalize_cp(cps)

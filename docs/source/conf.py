@@ -7,9 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "articubench"
-copyright = "2024, Konstantin Sering"
-author = "Konstantin Sering"
-release = "0.0.1"
+copyright = "2021 - 2025, Konstantin Sering"
+author = "Konstantin Sering and André Märtins"
+release = "0.3.0"
 
 # add modules to the path
 import os

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "articubench"
-version = "0.3.1"
+version = "0.3.3"
 description = "articubench - An Articulatory Speech Synthesis Benchmark"
 authors = ["Konstantin (Tino) Sering <konstantin.sering@uni-tuebingen.de>",
 	   "André Märtins <andre99dercoole@gmail.com>",

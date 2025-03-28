@@ -1,121 +1,48 @@
-Control Models
+Control models
 ==============
 
-Articubench supports multiple control models for generating Control Parameters (CPs) for the VocalTractLab. Each model has different characteristics, requirements, and performance trade-offs.
-
-Model Requirements
------------------
-
-All control models must meet the following requirements:
-
-1. Input Interface
-   - Accept sequence length parameter
-   - Support one or more input modalities:
-     * target_semantic_vector (300-dim fasttext vector)
-     * target_audio (mono signal)
-     * sampling_rate (typically 44.1kHz)
-
-2. Output Format
-   - Generate CP trajectories matching VTL requirements:
-     * Shape: (seq_length, 30)
-     * First 19 values: tract parameters
-     * Remaining 11 values: glottis parameters
-   - Time step: 110 samples (2.5ms at 44.1kHz)
-
-Available Models
---------------
+Articubench has multiple control models that generate CPs for the VocalTractLab. Mainly the "Baseline", "Segment-based" and "PAULE" model are currently implemented, while the "Inverse" model is in production.
 
 Baseline
 --------
 
-The Baseline model serves as a reference point for evaluation. It generates neutral "Schwa" sounds regardless of input, providing a minimum performance baseline.
+The Baseline model is a simple model that always generates the same CPs for the VocalTractLab, which produce a simple neutral sounding "Schwa" sound when synthesized. 
 
-Characteristics:
-- Simplest implementation
-- Fastest execution time
-- Minimal memory requirements
-- Consistent output quality
-- Useful for debugging and validation
+This model is used as a reference point for the other models to compare against.
 
-Input Requirements:
-- seq_length: Length of target CPs
+Inputs for all Tasks:
+    - Sequence length which is equal to the length of the target CPs (or half our signal length)
+
 
 Segment-based
 -------------
 
-The Segment-based model uses the Montreal Forced Aligner (MFA) to generate CPs from phoneme sequences. It provides a good balance of accuracy and computational efficiency.
+The Segment-based model is based on using the Montreal Forced Aligner (MFA) to generate CPs. Here we first resynthesize the original audio and a text file corresponding to the spoken word.
+Then we can use the MFA to map text to phonemes and phonemes with the audio to CPs. Generally generating smooth CPs which are quite a good approximation of the original audio.
 
-Characteristics:
-- Phoneme-based approach
-- Smooth CP trajectories
-- Good acoustic approximation
-- Requires MFA installation
+Inputs can be:
+    - target semantic vector 
+    - target audio signal with sample rate
 
-Input Requirements:
-- target_semantic_vector (optional)
-- target_audio + sampling_rate (if no semantic vector)
+If a target semantic vector is not provided, the model will use the target audio signal to generate CPs. Otherwise it will always produce CPs given the semantic vector.
 
 PAULE
 -----
 
-PAULE (Phonetic Articulatory Universal Language Encoder) is a machine learning model that learns to generate CPs through multiple training iterations.
+PAULE is a machine learning model which generates CPs based on the given Task. It uses a forward model to map CPs to audio, an inverse model to map audio to CPs and an embedder to map audio to a semantic space.
+It is also able to learn and update its model weights given the inputs.
 
-Architecture:
-- Forward model: CPs → Audio
-- Inverse model: Audio → CPs
-- Embedder: Audio → Semantic space
+Inputs can be:
+    - target semantic vector (for semantic-only task)
+    - target audio signal with sample rate (for acoustic-only task)
+    - both (for acoustic-semvec task)
 
-Variants:
-1. Fast Version
-   - Minimal training iterations
-   - Lower accuracy
-   - Suitable for development
-
-2. Acoustic-Semvec Version
-   - Full training cycles
-   - Higher accuracy
-   - Recommended for evaluation
-
-Input Requirements:
-- target_semantic_vector (semantic-only task)
-- target_audio + sampling_rate (acoustic-only task)
-- Both inputs (acoustic-semvec task)
-
-Performance Characteristics:
-- High GPU memory requirements
-- Accuracy improves with training
+There are currently two PAULE implementations available, the "Fast" and the "Acoustic-Semvec" model. The "Fast" model is simply a PAULE model with very short trainigns, while the "Acoustic-Semvec" model goes through multiple full training cycles.
 
 Inverse
 -------
 
-The Inverse model is a specialized component of PAULE that focuses on direct audio-to-CP mapping.
+The Inverse model is a part of PAULE, generating CPs from audio signals. It is currently in production and not yet available for use.
 
-Input Requirements:
-- target_audio + sampling_rate
-
-Performance Characteristics:
-- Fast execution time
-- Low memory requirements
-
-
-Performance Considerations
-------------------------
-
-1. Memory Requirements
-   - Baseline: Minimal memory
-   - Segment-based: Low memory
-   - PAULE: High GPU memory
-   - Inverse: Low memory
-
-
-2. Execution Time
-   - Baseline: Fastest
-   - Segment-based: Moderate
-   - PAULE: Variable (either fast or slow, depends on training)
-   - Inverse: Fast
-
-3. Accuracy Trade-offs
-   - Baseline: Lowest accuracy
-   - Segment-based: Good balance
-   - PAULE: Highest potential accuracy
-   - Inverse: Moderate accuracy
+Inputs:
+    - target audio signal with sample rate

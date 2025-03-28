@@ -27,6 +27,4 @@ Implementation Notes
     - 30 control parameters per timeframe
     - 2.5ms timeframe resolution (110 samples at 44.1kHz)
 - Since CP resolution is higher than our EMA and ultrasound data, the model uses 1d interpolation to match the required resolution
-- The lab measured EMA points have been scaled to first go from mm to cm, switched y and z axis and then offset to match the VTL coordinate system.
-- EMA points can be visualized using the animation.py 
 - Articubench uses multi-processing for all score and data calculations, apart from the intial CP-Generation which is done sequentially on the GPU since the model trains for each CP individually

@@ -105,11 +105,6 @@ You can rebuild the documentation by either executing
 in the repository's root folder (``articubench/``).
 
 
-Continuous Integration
-----------------------
-TODO: see pyndl documentation for reference.
-
-
 Licensing
 ---------
 All contributions to this project are licensed under the `GPLv3+ license

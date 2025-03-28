@@ -251,17 +251,17 @@ def score(
         BASELINE_EMA = np.mean(
             data.progress_apply(
                 lambda row: RMSE(
-                    #*align_ema(
+                    *align_ema(
                         row["ema_TT_baseline"], row["reference_ema_TT"]
-                        #)
+                        )
                 ),
                 axis=1,
             )
             + data.progress_apply(
                 lambda row: RMSE(
-                    #*align_ema(
+                    *align_ema(
                         row["ema_TB_baseline"], row["reference_ema_TB"]
-                        #)
+                        )
                 ),
                 axis=1,
             )

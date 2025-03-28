@@ -315,17 +315,20 @@ def read_cp(filename):
 def speak(cp_param):
     """
     Calls the vocal tract lab to synthesize an audio signal from the cp_param.
+
     Parameters
     ==========
     cp_param : np.array
         array containing the vocal and glottis parameters for each time step
         which is 110 / 44100 seoconds (roughly 2.5 ms)
+
     Returns
     =======
     (signal, sampling rate) : np.array, int
         returns the signal which is number of time steps in the cp_param array
         minus one times the time step length, i. e. ``(cp_param.shape[0] - 1) *
         110 / 44100``
+
     """
     # get some constants
     audio_sampling_rate = ctypes.c_int(0)
@@ -406,11 +409,13 @@ ARTICULATOR = {
 def speak_and_extract_tube_information(cp_param):
     """
     Calls the vocal tract lab to synthesize an audio signal from the cp_param.
+
     Parameters
     ==========
     cp_param : np.array
         array containing the vocal and glottis parameters for each time step
         which is 110 / 44100 seoconds (roughly 2.5 ms)
+
     Returns
     =======
     (signal, sampling rate, tube_info) : np.array, int, dict
@@ -536,6 +541,7 @@ def speak_and_extract_tube_information(cp_param):
 def audio_padding(sig, samplerate, winlen=0.010):
     """
     Pads the signal by half a window length on each side with zeros.
+
     Parameters
     ==========
     sig : np.array
@@ -544,6 +550,7 @@ def audio_padding(sig, samplerate, winlen=0.010):
         sampling rate
     winlen : float
         the window size in seconds
+
     """
     pad = int(np.ceil(samplerate * winlen) / 2)
     z = np.zeros(pad)
@@ -554,15 +561,18 @@ def audio_padding(sig, samplerate, winlen=0.010):
 def mel_to_sig(mel, mel_min=0.0):
     """
     creates audio from a normlised log mel spectrogram.
+
     Parameters
     ==========
     mel : np.array
         normalised log mel spectrogram (n_mel, seq_length)
     mel_min : float
         original min value (default: 0.0)
+
     Returns
     =======
     (sig, sampling_rate) : (np.array, int)
+
     """
     mel = mel + mel_min
     mel = inv_normalize_mel_librosa(mel)
@@ -613,6 +623,7 @@ def plot_mel(mel, file_name):
 def stereo_to_mono(wave, which="both"):
     """
     Extract a channel from a stereo wave
+
     Parameters
     ==========
     wave: np.array
@@ -620,6 +631,7 @@ def stereo_to_mono(wave, which="both"):
     which: {"left", "right", "both"} default = "both"
         if `mono`, `which` indicates whether the *left* or the *right* channel
         should be extracted, or whether *both* channels should be averaged.
+
     Returns
     =======
     data: numpy.array
@@ -699,6 +711,7 @@ def get_vel_acc_jerk(trajectory, *, lag=1):
 def cp_trajacetory_loss(Y_hat, tgts):
     """
     Calculate additive loss using the RMSE of position velocity , acc and jerk
+    
     :param Y_hat: 3D torch.Tensor
         model prediction
     :param tgts: 3D torch.Tensor
@@ -739,15 +752,17 @@ def cp_trajacetory_loss(Y_hat, tgts):
 def add_and_pad(xx, max_len, with_onset_dim=False):
     """
     Pad a sequence with last value to maximal length
+
     Parameters
     ==========
-    xx : 2D np.array
-        seuence to be padded (seq_length, feeatures)
+    xx : np.array
+        A 2d sequence to be padded (seq_length, feeatures)
     max_len : int
         maximal length to be padded to
     with_onset_dim : bool
         add one features with 1 for the first time step and rest 0 to indicate
         sound onset
+        
     Returns
     =======
     pad_seq : torch.Tensor
@@ -767,12 +782,14 @@ def add_and_pad(xx, max_len, with_onset_dim=False):
 def pad_batch_online(lens, data_to_pad, device="cpu", with_onset_dim=False):
     """
     pads and batches data into one single padded batch.
+
     Parameters
     ==========
     lens : 1D torch.Tensor
         Tensor containing the length of each sample in data_to_pad of one batch
     data_to_pad : series
         series containing the data to pad
+
     Returns
     =======
     padded_data : torch.Tensors
@@ -793,6 +810,7 @@ def pad_batch_online(lens, data_to_pad, device="cpu", with_onset_dim=False):
 def cps_to_ema_and_mesh(cps, file_prefix, *, path=""):
     """
     Calls the vocal tract lab to generate synthesized EMA trajectories.
+
     Parameters
     ==========
     cps : np.array
@@ -804,6 +822,7 @@ def cps_to_ema_and_mesh(cps, file_prefix, *, path=""):
         the prefix of the files written
     path : str
         path where to put the output files
+
     Returns
     =======
     None : None
@@ -885,6 +904,7 @@ def cps_to_ema_and_mesh(cps, file_prefix, *, path=""):
 def cps_to_ema(cps):
     """
     Calls the vocal tract lab to generate synthesized EMA trajectories.
+
     Parameters
     ==========
     cps : np.array
@@ -892,6 +912,7 @@ def cps_to_ema(cps):
         which is 110 / 44100 seoconds (roughly 2.5 ms); first dimension is
         sequence and second is vocal tract lab parameters, i. e. (n_sequence,
         30)
+
     Returns
     =======
     emas : pd.DataFrame
@@ -973,11 +994,10 @@ def rigid_transform_3d(A, B):
 def calculate_roll_pitch_yaw(rotation_matrix):
     """
     Illustration of the rotation matrix / sometimes called 'orientation' matrix
-    R = [
-           R11 , R12 , R13,
+
+    R = [  R11 , R12 , R13,
            R21 , R22 , R23,
-           R31 , R32 , R33
-        ]
+           R31 , R32 , R33 ]
 
     REMARKS:
     1. this implementation is meant to make the mathematics easy to be deciphered
@@ -1138,12 +1158,14 @@ def scale_emas_to_vtl(ema_data, x_offset=8, y_offset=0.3, z_offset=-0.3):
 
 def interpolate(length: int, array: np.array):
     """Interpolates the given array to the given length using scipy's Pchip Interpolator function.
+
     Parameters
     ==========
     length : int
         the length we wish the given array to be interpolatet to
     array : np.array
         the numpy array we wish to interpolate to the given length
+
     Returns
     =======
     array : np.array

@@ -35,7 +35,7 @@ Each row in the tiny dataset includes the following columns:
     - reference_ema_TB: Placeholder for EMA data for the tongue body (TB), currently None.
 
 Small
-----
+-----
 
 The small dataset is a more comprehensive subset, consisting of approximately 2,000 rows. This dataset is a mixture of a subset of the GECO word corpus and 1,800 pronunciations of the words "ja" and "halt" with their respective EMA points.
 

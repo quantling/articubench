@@ -7,10 +7,10 @@ Overview
 The articubench benchmark provides three distinct methods for initializing the PAULE control model and generating Control Parameters (CPs).
 
 Task Types
-=========
+==========
 
 Acoustic-only (Copy-Synthesis)
-----------------------------
+------------------------------
 **Input**: Target audio recording (human speech) and sample rate
 
 
@@ -21,7 +21,7 @@ Purpose:
 
 
 Semantic-only
-------------
+-------------
 **Input**: Target semantic embedding vector, desired duration
 
 
@@ -33,7 +33,7 @@ Purpose:
 
 
 Semantic-Acoustic
----------------
+-----------------
 **Input**: Target audio recording with sample rate AND semantic embedding vector with a desired duration
 
 

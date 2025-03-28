@@ -4,7 +4,7 @@ Package overview
 .. automodule:: articubench
 
 Submodules: score
-----------
+-----------------
 
 .. automodule:: articubench.score 
     :members:
@@ -13,7 +13,7 @@ Submodules: score
 
 
 Submodules: control_models
-----------
+--------------------------
 
 .. automodule:: articubench.control_models
     :members:
@@ -22,7 +22,7 @@ Submodules: control_models
 
 
 Submodules: util
-----------
+----------------
 
 .. automodule:: articubench.util
     :members:

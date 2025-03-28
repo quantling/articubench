@@ -19,8 +19,24 @@ Measure Memory usage with::
 
     ps aux | grep ipython
 
-Divide the fith entry VmSize/VSZ [KiB] by 1024 to get [MiB].
+Divide the fith entry VmSize/VSZ [KiB] by 1024 to get [MiB]::
 
+    sampa_convert_dict = {
+        'etu':'@',
+        'atu':'6',
+        'al':'a:',
+        'el':'e:',
+        'il':'i:',
+        'ol':'o:',
+        'ul':'u:',
+        'oel':'2:',
+        'uel':'y:',
+        'ae':'E:',
+        'oe':'9',
+        'ue':'Y',
+        'ng':'N',
+        'eU':'OY'
+    }
 
 """
 
@@ -60,7 +76,7 @@ VTL_NEUTRAL_GLOTTIS = np.array([120.0, 8000.0, 0.01, 0.02, 0.05, 1.22, 1.0, 0.05
 VTL_NEUTRAL_GLOTTIS.shape = (1, 11)
 
 PAULE_MODEL = paule.Paule(device=DEVICE)
-'''
+
 EMBEDDER = MelEmbeddingModel(num_lstm_layers=2, hidden_size=720, dropout=0.7).double()
 EMBEDDER.load_state_dict(torch.load(
     os.path.join(DIR, "models/embedder/embed_model_common_voice_syn_rec_2_720_0_dropout_07_noise_6e05_rmse_lr_00001_200.pt"),
@@ -69,26 +85,11 @@ EMBEDDER.load_state_dict(torch.load(
 
 EMBEDDER = EMBEDDER.to(DEVICE)
 EMBEDDER.eval()
-'''
+
 INVERSE_MODEL = PAULE_MODEL.inv_model.eval()
 INVERSE_GAN = PAULE_MODEL.cp_gen_model.eval()
 
-"""sampa_convert_dict = {
-    'etu':'@',
-    'atu':'6',
-    'al':'a:',
-    'el':'e:',
-    'il':'i:',
-    'ol':'o:',
-    'ul':'u:',
-    'oel':'2:',
-    'uel':'y:',
-    'ae':'E:',
-    'oe':'9',
-    'ue':'Y',
-    'ng':'N',
-    'eU':'OY'
-}"""
+
 with open(os.path.join(DIR, "data/sampa_ipa_dict.pkl"), 'rb') as handle:
     sampa_convert_dict = pickle.load(handle)
 

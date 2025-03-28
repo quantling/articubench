@@ -164,9 +164,9 @@ def visualize_vtl_animation(mesh_dir, ema_file, scale=False, frame_time=0.5, tra
     
     # Set default camera view
     ctr = vis.get_view_control()
-    ctr.set_zoom(0.8)
-    ctr.set_front([0, 0, -.8])
-    ctr.set_up([0, .8, 0])
+    ctr.set_zoom(0.9)
+    ctr.set_front([0.2, 0.8, -.8])
+    ctr.set_up([0.1, 1, 0])
     if export:
         # Setup video writer
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -313,9 +313,7 @@ if __name__ == "__main__":
         print("Removing old meshes...")
         shutil.rmtree(MESH_DIR)
 
-    #wir nehmen unser hinterstes dataframe weil wir fancy sind
     data = pd.read_pickle('./articubench/data/small.pkl').iloc[-1]
-    #cps = data['reference_cp'].iloc[-1]
     label = data['label']
     print(label)
     print(data)
@@ -323,12 +321,6 @@ if __name__ == "__main__":
                         target_semantic_vector=data['target_semantic_vector'],
                             target_audio = data['target_sig'],
                             sampling_rate= data['target_sr'])
-    #plot_cps = normalize_cp(cps)
-    #plt.plot(plot_cps)
-    #plt.show()
-
-
-    #we get our ema and meshes
 
     cps_to_ema_and_mesh(cps, f'{label}', path=DIR + '/Meshes')
     mesh_dir = os.path.join(MESH_DIR, f"{label}-meshes")

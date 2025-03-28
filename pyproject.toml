@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "articubench"
-version = "0.3.0"
+version = "0.3.1"
 description = "articubench - An Articulatory Speech Synthesis Benchmark"
 authors = ["Konstantin (Tino) Sering <konstantin.sering@uni-tuebingen.de>",
+	   "André Märtins <andre99dercoole@gmail.com>",
            "Paul Schmidt-Barbo",]
 license = "GPLv3+"
 readme = "README.rst"

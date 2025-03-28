@@ -167,6 +167,13 @@ loudness envelope
 spectrogram RMSE
 ===================  =====  =======  ===============  ==============
 
+EMA Point animation
+-------------------
+The EMA point animation shows the movement of the EMA sensors on the tongue tip (red), tongue body (green) and tongue back (red) of PAULEs articulation of the word "Oberreferendarin".
+Shown as reference points in lighter colours are lab taken EMA data from the KEC corpus. 
+
+<video src="https://raw.githubusercontent.com/quantling/articubench/main/docs/figure/output.mp4" controls></video>
+
 Literature
 ----------
 

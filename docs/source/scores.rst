@@ -5,28 +5,31 @@ Scores
 The scores define different metrics to evaluate control model performance in articulatory speech synthesis. Higher scores indicate better performance, with each subscore typically ranging between 0 and 100.
 
 Groups of Scores
-==============
+================
 
 The benchmark distinguishes three main groups of scores:
 
 1. **Articulatory Scores**
+
   - Measures quality of articulatory movements
   - Evaluates velocity and jerk distribution
   - Compares virtual tongue movement to EMA data
   - Compares virtual tongue height to ultrasound measurements
 
 2. **Semantic Scores**
+
   - Evaluates closeness of produced to target semantic vector embedding
   - Assesses classification rank in word classification
 
 3. **Acoustic Scores**
+
   - Compares synthesis and target audio recording
   - Evaluates loudness envelope and log-mel spectrograms
   - Future: f0 and formant transition scores
 
 
 Score Calculation
-===============
+=================
 
 Scores are calculated as follows:
 
@@ -41,13 +44,13 @@ This ensures:
 - Baseline model error = score of 0
 
 Total Score Formula
-----------------
+-------------------
 .. math::
 
     S_\text{total} = S_\text{articulatory} + S_\text{semantic} + S_\text{acoustic}
 
 1. **Articulatory Scoring**
-----
+----------------------------
 
 The `score_articulatory` function calculates an overall articulatory score by combining the results from three sub-scores:
 
@@ -57,7 +60,7 @@ The `score_articulatory` function calculates an overall articulatory score by co
 
 
 1.1 `score_tongue_height(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
 
@@ -70,7 +73,7 @@ Calculates a score based on the mean RMSE difference between the predicted tongu
 
 
 1.2 `score_ema(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
 
@@ -87,7 +90,7 @@ Calculates a score on the EMA (Electromagnetic Articulography) data for the tong
 
 
 1.3 `score_vel_jerk(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
    S_\text{vel\_jerk} = 100 \cdot \left(2 - \frac{mean_\text{token}(max(\text{velocity}_\text{synthesis}))}{max(\text{velocity}_\text{GECO})} - \frac{mean_\text{token}(max(\text{jerk}_\text{synthesis}))}{max(\text{jerk}_\text{GECO})}\right)
@@ -100,7 +103,7 @@ Calculates a score based on the velocity and jerk of the cp-trajectories. The sc
 
 
 2. **Acoustic Scoring**
-----
+------------------------
 
 The `score_acoustic` function evaluates the acoustic properties of the data by combining two sub-scores:
 
@@ -109,7 +112,7 @@ The `score_acoustic` function evaluates the acoustic properties of the data by c
 
 
 2.1 `score_loudness(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
   S_\text{loudness} = 100 \cdot \left( 1 - \frac{mean_\text{token}( RMSE(\text{loudness}_\text{synthesis}, \text{loudness}_\text{recording}))}{\text{baseline model}} \right)
@@ -120,7 +123,7 @@ Loudness is calculated every 220 samples over a 1024 sample window by summing al
 
 
 2.2 `score_spectrogram(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
   S_\text{spectrogram} = 100 \cdot \left( 1 - \frac{mean_\text{token}(RMSE(\text{spectrogram}_\text{synthesis}, \text{spectrogram}_\text{recording}))}{\text{baseline model}} \right) 
@@ -129,7 +132,7 @@ Calculates a score based on the difference between the predicted log-mel spectro
 We use a Mel spectrogram with 60 banks in the frequency range from 10 to 12000 Hz, a time shift of 110 samples and an aggregation window for the Fourier transform of 1024 samples.
 
 3. **Semantic Scoring**
-----
+------------------------
 
 The `score_semantic` function evaluates the semantic properties of the data by combining two sub-scores:
 
@@ -138,7 +141,7 @@ The `score_semantic` function evaluates the semantic properties of the data by c
 
 
 3.1 `score_sem_dist(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
   S_\text{sem\_dist} = 100 \cdot \left( 1 - \frac{mean_\text{token}( RMSE(\text{semantic\_vector}_\text{synthesis}, \text{semantic\_vector}_\text{target}))}{\text{baseline model}} \right)
@@ -148,7 +151,7 @@ Calculates a score based on the semantic distance between the predicted semantic
 
 
 3.2 `score_sem_rank(data, task)`
-~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
   S_\text{sem\_rank} = 100 \cdot \left( 1 - \frac{ mean_\text{token}(rank_\text{target} - 1))}{4311} \right)

@@ -36,10 +36,10 @@ Here we have two parts, first the control model which generates our cp-trajector
 The control models which come from the PAULE package expect at least a sequence length and depending on the task also target audio or target semantic embeddings.
 
 Loading your own control model
-=============================
+==============================
 
 **Loading PAULE**
-~~~~
+~~~~~~~~~~~~~~~~~
 To use one of the pre-configured control models seen above, we need to have the PAULE package installed, afterwards we simply load the PAULE class using one of PAULE's or our own forward, inverse and embedder models.
 
 Then we use the .plan_resynth() function to generate our CPs, as seen in the below example which is specified for the 'acoustic-semvec' task.
@@ -59,7 +59,7 @@ In-detail explanations on PAULE are given the respective documentation, therefor
         cps = results.planned_cp.copy()
         assert cps.shape[0] == seq_length
         return util.inv_normalize_cp(cps)
-~~~~                
+               
 
 This example also showcases two of the pitfalls of the PAULE package, first the need to normalize the CPs before returning them and secondly the produced CPs are half the length of the target audio.
 Meaning they have half the time resolution of the target audio.

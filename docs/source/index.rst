@@ -1,7 +1,3 @@
-.. pyndl documentation master file, created by
-   sphinx-quickstart on Thu Jan 26 17:28:31 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
 .. toctree::
    :maxdepth: 2
@@ -10,10 +6,10 @@
    usage
    overview
    installation
-   control_models
-   data
    scores
    tasks
+   data
+   control_models
 
    development
    articubench

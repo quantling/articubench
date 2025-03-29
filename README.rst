@@ -124,24 +124,24 @@ loudness envelope         35.72                                             0
 spectrogram RMSE          29.12                                             0
 semantic RMSE             -0.36                                             0
 Classification            12.94                                             13.21
-========================  ==========  ==========  =======  ===============  ==============
+=========================  ==========  ==========  =======  ===============  ==============
 
-========================  ==========  ==========  =======  ===============  ==============
-Small / semantic-acoustic PAULE-fast  PAULE-full  Inverse  Seg-Model*       Baseline-Model
-========================  ==========  ==========  =======  ===============  ==============
-Total Score               -44.96                                            63.21
-Articulatory Scores                                                         50
-Semantic Scores                                                             13.21
-Acoustic Scores                                                             0
-Tongue Height             5.77                                              0
-EMA sensors               17.49                                             0
-Max Velocity              (0.0)                                             (50)
-Max Jerk                  (0.0)                                             (50)
-loudness envelope         -44.94                                            0
-spectrogram RMSE          -32.30                                            0
-semantic RMSE             -3.47                                             0
-Classification            12.49                                             13.21
-========================  ==========  ==========  =======  ===============  ==============
+=========================  ==========  ==========  =======  ===============  ==============
+Small / semantic-acoustic  PAULE-fast  PAULE-full  Inverse  Seg-Model*       Baseline-Model
+=========================  ==========  ==========  =======  ===============  ==============
+Total Score                -44.96                                            63.21
+Articulatory Scores                                                          50
+Semantic Scores                                                              13.21
+Acoustic Scores                                                              0
+Tongue Height              5.77                                              0
+EMA sensors                17.49                                             0
+Max Velocity               (0.0)                                             (50)
+Max Jerk                   (0.0)                                             (50)
+loudness envelope          -44.94                                            0
+spectrogram RMSE           -32.30                                            0
+semantic RMSE              -3.47                                             0
+Classification             12.49                                             13.21
+=========================  ==========  ==========  =======  ===============  ==============
 
 ========================  ==========  ==========  =======  ===============  ==============
 Small / semantic-only     PAULE-fast  PAULE-full  Inverse  Seg-Model*       Baseline-Model

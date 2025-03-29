@@ -1,7 +1,5 @@
 Development
 ===========
-TODO: but badges here see pyndl for reference
-
 
 Getting Involved
 ----------------
